@@ -1,0 +1,1404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>FitTrack Pro - Multi-Tab Realtime Tracker</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Chart.js for Weight Visualization -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              red: '#FA114F',
+              green: '#A1FF00',
+              cyan: '#00F0FF',
+              amber: '#FF9500',
+              purple: '#AF52DE',
+              dark: '#0A0A0C',
+              card: '#16161A',
+              border: '#26262E'
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body {
+      background-color: #0A0A0C;
+      color: #F3F4F6;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: #121216;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #2a2a36;
+      border-radius: 4px;
+    }
+    .ring-circle {
+      transition: stroke-dashoffset 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+      transform: rotate(-90deg);
+      transform-origin: 50% 50%;
+    }
+  </style>
+</head>
+<body class="min-h-screen pb-24 md:pb-12 custom-scrollbar">
+
+  <!-- TOP HEADER WITH REAL-TIME CLOCK & MULTI-TAB LIVE BEACON -->
+  <header class="sticky top-0 z-40 bg-[#0A0A0C]/90 backdrop-blur-md border-b border-brand-border px-4 py-3 sm:px-6">
+    <div class="max-w-4xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
+      <!-- Title & Live Status -->
+      <div class="flex items-center justify-between w-full sm:w-auto">
+        <div class="flex items-center gap-2.5">
+          <div class="w-8 h-8 rounded-lg bg-gradient-to-tr from-brand-red via-brand-purple to-brand-green flex items-center justify-center font-black text-black text-sm">
+            FT
+          </div>
+          <div>
+            <h1 class="text-base font-bold tracking-tight text-white leading-tight">FitTrack Pro</h1>
+            <p class="text-[11px] text-zinc-400">Target: 65.0 kg (170 cm)</p>
+          </div>
+        </div>
+
+        <!-- Cross-Tab Live Indicator -->
+        <div id="crossTabBeacon" class="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-950/60 border border-emerald-500/30 text-[11px] text-emerald-400">
+          <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+          <span class="hidden xs:inline font-mono">Sync Active</span>
+        </div>
+      </div>
+
+      <!-- Live Digital Clock & Auto Midnight Rollover Display -->
+      <div class="flex items-center justify-between w-full sm:w-auto gap-4 bg-brand-card/80 border border-brand-border px-3.5 py-1.5 rounded-xl">
+        <div class="flex items-center gap-2">
+          <i data-lucide="clock" class="w-4 h-4 text-brand-cyan"></i>
+          <span id="liveClock" class="font-mono text-sm font-semibold tracking-wider text-brand-cyan">00:00:00 AM</span>
+        </div>
+        <div class="h-4 w-px bg-zinc-700"></div>
+        <div class="flex items-center gap-1.5 text-xs text-zinc-300 font-medium">
+          <i data-lucide="calendar" class="w-3.5 h-3.5 text-zinc-400"></i>
+          <span id="liveDate">Loading...</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- NAVIGATION TABS -->
+  <nav class="max-w-4xl mx-auto px-4 mt-4">
+    <div class="grid grid-cols-4 gap-1.5 p-1 bg-brand-card rounded-2xl border border-brand-border text-xs font-semibold">
+      <button onclick="switchTab('daily')" id="tabBtn-daily" class="tab-btn py-2.5 rounded-xl flex items-center justify-center gap-1.5 transition-all text-black bg-brand-green shadow-lg shadow-brand-green/20">
+        <i data-lucide="check-circle-2" class="w-4 h-4"></i>
+        <span>Daily</span>
+      </button>
+      <button onclick="switchTab('weighin')" id="tabBtn-weighin" class="tab-btn py-2.5 rounded-xl flex items-center justify-center gap-1.5 transition-all text-zinc-400 hover:text-white">
+        <i data-lucide="scale" class="w-4 h-4"></i>
+        <span>Weigh-In</span>
+      </button>
+      <button onclick="switchTab('badhabits')" id="tabBtn-badhabits" class="tab-btn py-2.5 rounded-xl flex items-center justify-center gap-1.5 transition-all text-zinc-400 hover:text-white">
+        <i data-lucide="shield-alert" class="w-4 h-4"></i>
+        <span>Bad Habits</span>
+      </button>
+      <button onclick="switchTab('nutrition')" id="tabBtn-nutrition" class="tab-btn py-2.5 rounded-xl flex items-center justify-center gap-1.5 transition-all text-zinc-400 hover:text-white">
+        <i data-lucide="utensils" class="w-4 h-4"></i>
+        <span>Protein & Diet</span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- MAIN APP CONTAINER -->
+  <main class="max-w-4xl mx-auto px-4 mt-5 space-y-6">
+
+    <!-- ========================================== -->
+    <!-- TAB 1: DAILY CHECKLIST & REAL-TIME POINTS  -->
+    <!-- ========================================== -->
+    <section id="view-daily" class="tab-view space-y-6">
+      
+      <!-- Date Navigator -->
+      <div class="bg-brand-card p-4 rounded-2xl border border-brand-border flex items-center justify-between">
+        <button onclick="changeActiveDay(-1)" class="p-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-200 transition">
+          <i data-lucide="chevron-left" class="w-5 h-5"></i>
+        </button>
+        <div class="text-center">
+          <div class="flex items-center justify-center gap-2">
+            <h2 id="currentViewingDate" class="text-base font-bold text-white">Today</h2>
+            <span id="todayBadge" class="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-brand-green/20 text-brand-green border border-brand-green/30">Live</span>
+          </div>
+          <p id="viewingSubDate" class="text-xs text-zinc-400 mt-0.5">Fetching calendar date...</p>
+        </div>
+        <div class="flex items-center gap-2">
+          <button onclick="jumpToToday()" title="Jump to Today" class="p-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs font-medium flex items-center gap-1">
+            <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+          </button>
+          <button onclick="changeActiveDay(1)" class="p-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-200 transition">
+            <i data-lucide="chevron-right" class="w-5 h-5"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Daily Score Dashboard & Apple Fitness Style Ring -->
+      <div class="bg-brand-card p-5 rounded-2xl border border-brand-border grid grid-cols-1 sm:grid-cols-12 gap-5 items-center">
+        <!-- Circular Progress Ring -->
+        <div class="sm:col-span-4 flex flex-col items-center justify-center">
+          <div class="relative w-36 h-36 flex items-center justify-center">
+            <svg class="w-full h-full" viewBox="0 0 100 100">
+              <!-- Background Circle -->
+              <circle cx="50" cy="50" r="42" stroke="#26262E" stroke-width="9" fill="transparent"/>
+              <!-- Active Score Ring -->
+              <circle id="scoreRingProgress" class="ring-circle" cx="50" cy="50" r="42" stroke="#A1FF00" stroke-width="9" stroke-linecap="round" fill="transparent" stroke-dasharray="263.89" stroke-dashoffset="263.89"/>
+            </svg>
+            <div class="absolute inset-0 flex flex-col items-center justify-center text-center">
+              <span id="scoreText" class="text-3xl font-black tracking-tight text-white">0</span>
+              <span class="text-[10px] uppercase tracking-widest text-zinc-400 font-semibold">/ 100 PTS</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Quick Summary & Streaks -->
+        <div class="sm:col-span-8 space-y-3.5">
+          <div class="flex items-center justify-between border-b border-zinc-800 pb-2.5">
+            <div>
+              <p class="text-xs text-zinc-400">Daily Target Completion</p>
+              <h3 id="scoreStatusMessage" class="text-sm font-semibold text-zinc-200">Start ticking off habits</h3>
+            </div>
+            <div class="text-right">
+              <div class="flex items-center gap-1.5 justify-end text-brand-amber font-bold text-sm">
+                <i data-lucide="flame" class="w-4 h-4 fill-brand-amber"></i>
+                <span id="streakCount">0</span> Day Streak
+              </div>
+              <p class="text-[10px] text-zinc-500">Days scoring ≥ 80 pts</p>
+            </div>
+          </div>
+
+          <!-- Micro Progress Bars -->
+          <div class="grid grid-cols-3 gap-2 pt-1 text-center">
+            <div class="p-2 rounded-xl bg-zinc-900/90 border border-zinc-800">
+              <p class="text-[10px] text-zinc-400 font-medium">Nutrition</p>
+              <p id="nutritionScore" class="text-xs font-bold text-brand-green mt-0.5">0/50 pts</p>
+            </div>
+            <div class="p-2 rounded-xl bg-zinc-900/90 border border-zinc-800">
+              <p class="text-[10px] text-zinc-400 font-medium">Activity</p>
+              <p id="activityScore" class="text-xs font-bold text-brand-cyan mt-0.5">0/30 pts</p>
+            </div>
+            <div class="p-2 rounded-xl bg-zinc-900/90 border border-zinc-800">
+              <p class="text-[10px] text-zinc-400 font-medium">Recovery</p>
+              <p id="recoveryScore" class="text-xs font-bold text-brand-red mt-0.5">0/20 pts</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Habit Checklists Grouped by Category -->
+      <div class="space-y-4">
+
+        <!-- 1. Nutrition Category (50 pts) -->
+        <div class="bg-brand-card rounded-2xl border border-brand-border p-4 space-y-3">
+          <div class="flex items-center justify-between border-b border-zinc-800 pb-2">
+            <div class="flex items-center gap-2 text-brand-green font-bold text-sm">
+              <i data-lucide="apple" class="w-4 h-4"></i>
+              <span>Nutrition Disciplines (50 pts)</span>
+            </div>
+            <span class="text-[11px] font-mono text-zinc-400">10 pts each</span>
+          </div>
+
+          <div class="space-y-2.5">
+            <label class="flex items-start gap-3 p-3 rounded-xl bg-zinc-900/60 border border-zinc-800/80 hover:border-zinc-700 cursor-pointer transition">
+              <input type="checkbox" onchange="toggleChecklist('nutr_protein')" id="chk-nutr_protein" class="mt-1 w-4 h-4 rounded text-brand-green bg-zinc-800 border-zinc-700 focus:ring-0 focus:ring-offset-0" />
+              <div class="text-xs leading-relaxed">
+                <span class="font-bold text-white block">Hit 90g – 100g Protein</span>
+                <span class="text-zinc-400 text-[11px]">Anchored with eggs, 50g soya chunks, curd, or thick dal.</span>
+              </div>
+            </label>
+
+            <label class="flex items-start gap-3 p-3 rounded-xl bg-zinc-900/60 border border-zinc-800/80 hover:border-zinc-700 cursor-pointer transition">
+              <input type="checkbox" onchange="toggleChecklist('nutr_oil')" id="chk-nutr_oil" class="mt-1 w-4 h-4 rounded text-brand-green bg-zinc-800 border-zinc-700 focus:ring-0 focus:ring-offset-0" />
+              <div class="text-xs leading-relaxed">
+                <span class="font-bold text-white block">Cooking Oil Capped at 2–3 Tsp</span>
+                <span class="text-zinc-400 text-[11px]">Strict 10–15 ml oil or ghee limit across all meals today.</span>
+              </div>
+            </label>
+
+            <label class="flex items-start gap-3 p-3 rounded-xl bg-zinc-900/60 border border-zinc-800/80 hover:border-zinc-700 cursor-pointer transition">
+              <input type="checkbox" onchange="toggleChecklist('nutr_carbs')" id="chk-nutr_carbs" class="mt-1 w-4 h-4 rounded text-brand-green bg-zinc-800 border-zinc-700 focus:ring-0 focus:ring-offset-0" />
+              <div class="text-xs leading-relaxed">
+                <span class="font-bold text-white block">Carb Portion Controlled</span>
+                <span class="text-zinc-400 text-[11px]">Max 1 medium cup cooked rice or 2 rotis per main meal.</span>
+              </div>
+            </label>
+
+            <label class="flex items-start gap-3 p-3 rounded-xl bg-zinc-900/60 border border-zinc-800/80 hover:border-zinc-700 cursor-pointer transition">
+              <input type="checkbox" onchange="toggleChecklist('nutr_sugar')" id="chk-nutr_sugar" class="mt-1 w-4 h-4 rounded text-brand-green bg-zinc-800 border-zinc-700 focus:ring-0 focus:ring-offset-0" />
+              <div class="text-xs leading-relaxed">
+                <span class="font-bold text-white block">Zero Liquid Sugar</span>
+                <span class="text-zinc-400 text-[11px]">No sugary chai, juices, or soft drinks. Pure water or buttermilk.</span>
+              </div>
+            </label>
+
+            <label class="flex items-start gap-3 p-3 rounded-xl bg-zinc-900/60 border border-zinc-800/80 hover:border-zinc-700 cursor-pointer transition">
+              <input type="checkbox" onchange="toggleChecklist('nutr_water')" id="chk-nutr_water" class="mt-1 w-4 h-4 rounded text-brand-green bg-zinc-800 border-zinc-700 focus:ring-0 focus:ring-offset-0" />
+              <div class="text-xs leading-relaxed">
+                <span class="font-bold text-white block">Hydration (2.5L – 3L Water)</span>
+                <span class="text-zinc-400 text-[11px]">Consistent hydration throughout morning, afternoon & night.</span>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <!-- 2. Daily Movement & Activity (30 pts) -->
+        <div class="bg-brand-card rounded-2xl border border-brand-border p-4 space-y-3">
+          <div class="flex items-center justify-between border-b border-zinc-800 pb-2">
+            <div class="flex items-center gap-2 text-brand-cyan font-bold text-sm">
+              <i data-lucide="activity" class="w-4 h-4"></i>
+              <span>Movement & Exercise (30 pts)</span>
+            </div>
+            <span class="text-[11px] font-mono text-zinc-400">10 pts each</span>
+          </div>
+
+          <div class="space-y-2.5">
+            <label class="flex items-start gap-3 p-3 rounded-xl bg-zinc-900/60 border border-zinc-800/80 hover:border-zinc-700 cursor-pointer transition">
+              <input type="checkbox" onchange="toggleChecklist('act_steps')" id="chk-act_steps" class="mt-1 w-4 h-4 rounded text-brand-cyan bg-zinc-800 border-zinc-700 focus:ring-0 focus:ring-offset-0" />
+              <div class="text-xs leading-relaxed">
+                <span class="font-bold text-white block">8,000 – 10,000 Daily Steps</span>
+                <span class="text-zinc-400 text-[11px]">Brisk morning/evening walking logged on your fitness tracker.</span>
+              </div>
+            </label>
+
+            <label class="flex items-start gap-3 p-3 rounded-xl bg-zinc-900/60 border border-zinc-800/80 hover:border-zinc-700 cursor-pointer transition">
+              <input type="checkbox" onchange="toggleChecklist('act_postwalk')" id="chk-act_postwalk" class="mt-1 w-4 h-4 rounded text-brand-cyan bg-zinc-800 border-zinc-700 focus:ring-0 focus:ring-offset-0" />
+              <div class="text-xs leading-relaxed">
+                <span class="font-bold text-white block">10-Min Post-Meal Stroll</span>
+                <span class="text-zinc-400 text-[11px]">Light walk after lunch or dinner to blunt post-meal blood sugar.</span>
+              </div>
+            </label>
+
+            <label class="flex items-start gap-3 p-3 rounded-xl bg-zinc-900/60 border border-zinc-800/80 hover:border-zinc-700 cursor-pointer transition">
+              <input type="checkbox" onchange="toggleChecklist('act_strength')" id="chk-act_strength" class="mt-1 w-4 h-4 rounded text-brand-cyan bg-zinc-800 border-zinc-700 focus:ring-0 focus:ring-offset-0" />
+              <div class="text-xs leading-relaxed">
+                <span class="font-bold text-white block">Strength / Calisthenics Routine</span>
+                <span class="text-zinc-400 text-[11px]">20–30 mins of push-ups, squats, rows, or core planks.</span>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <!-- 3. Recovery & Lifestyle (20 pts) -->
+        <div class="bg-brand-card rounded-2xl border border-brand-border p-4 space-y-3">
+          <div class="flex items-center justify-between border-b border-zinc-800 pb-2">
+            <div class="flex items-center gap-2 text-brand-red font-bold text-sm">
+              <i data-lucide="moon" class="w-4 h-4"></i>
+              <span>Recovery & Habits (20 pts)</span>
+            </div>
+            <span class="text-[11px] font-mono text-zinc-400">10 pts each</span>
+          </div>
+
+          <div class="space-y-2.5">
+            <label class="flex items-start gap-3 p-3 rounded-xl bg-zinc-900/60 border border-zinc-800/80 hover:border-zinc-700 cursor-pointer transition">
+              <input type="checkbox" onchange="toggleChecklist('rec_sleep')" id="chk-rec_sleep" class="mt-1 w-4 h-4 rounded text-brand-red bg-zinc-800 border-zinc-700 focus:ring-0 focus:ring-offset-0" />
+              <div class="text-xs leading-relaxed">
+                <span class="font-bold text-white block">7–8 Hours Quality Sleep</span>
+                <span class="text-zinc-400 text-[11px]">Uninterrupted sleep for fat loss recovery and hormone balance.</span>
+              </div>
+            </label>
+
+            <label class="flex items-start gap-3 p-3 rounded-xl bg-zinc-900/60 border border-zinc-800/80 hover:border-zinc-700 cursor-pointer transition">
+              <input type="checkbox" onchange="toggleChecklist('rec_dinner')" id="chk-rec_dinner" class="mt-1 w-4 h-4 rounded text-brand-red bg-zinc-800 border-zinc-700 focus:ring-0 focus:ring-offset-0" />
+              <div class="text-xs leading-relaxed">
+                <span class="font-bold text-white block">Early Dinner Cutoff</span>
+                <span class="text-zinc-400 text-[11px]">Finished dinner at least 2 hours before laying down to sleep.</span>
+              </div>
+            </label>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ======================================================== -->
+    <!-- TAB 2: WEEKLY WEIGH-IN (WAIST REMOVED + EDITABLE LOGS)   -->
+    <!-- ======================================================== -->
+    <section id="view-weighin" class="tab-view hidden space-y-6">
+
+      <!-- Transformation Progress Card -->
+      <div class="bg-brand-card p-5 rounded-2xl border border-brand-border space-y-4">
+        <div class="flex items-center justify-between">
+          <div>
+            <span class="text-[10px] uppercase font-bold tracking-wider text-zinc-400">Goal Trajectory</span>
+            <h2 class="text-lg font-bold text-white">76.0 kg → 65.0 kg Target</h2>
+          </div>
+          <div class="text-right">
+            <span id="weightLostBadge" class="text-xs font-extrabold px-3 py-1 rounded-full bg-brand-green/20 text-brand-green border border-brand-green/30">
+              0.0 kg Lost
+            </span>
+          </div>
+        </div>
+
+        <!-- Visual Progress Bar -->
+        <div class="space-y-1.5">
+          <div class="w-full bg-zinc-800 h-3 rounded-full overflow-hidden p-0.5 border border-zinc-700">
+            <div id="transformationProgressBar" class="h-full bg-gradient-to-r from-brand-red via-brand-amber to-brand-green rounded-full transition-all duration-500" style="width: 5%;"></div>
+          </div>
+          <div class="flex justify-between text-[11px] text-zinc-400 font-mono">
+            <span>Start: 76.0 kg</span>
+            <span id="currentWeightDisplay">Current: 76.0 kg</span>
+            <span>Target: 65.0 kg</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Weigh-in Form (No Waist Input) -->
+      <div class="bg-brand-card p-5 rounded-2xl border border-brand-border space-y-4">
+        <div class="flex items-center justify-between border-b border-zinc-800 pb-3">
+          <div class="flex items-center gap-2">
+            <i data-lucide="scale" class="w-5 h-5 text-brand-green"></i>
+            <h3 id="weighInFormTitle" class="text-sm font-bold text-white">Record Weekly Weigh-In</h3>
+          </div>
+          <span class="text-[11px] text-zinc-400">Step on empty stomach</span>
+        </div>
+
+        <form id="weighInForm" onsubmit="handleWeighInSubmit(event)" class="space-y-4">
+          <input type="hidden" id="editWeighInId" value="" />
+          
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs font-semibold text-zinc-300 mb-1.5">Body Weight (kg) *</label>
+              <div class="relative">
+                <input type="number" step="0.1" min="45" max="150" id="inputWeight" required placeholder="e.g. 75.4" class="w-full bg-zinc-900 border border-zinc-700 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-brand-green font-mono" />
+                <span class="absolute right-3.5 top-2.5 text-xs text-zinc-500">kg</span>
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-xs font-semibold text-zinc-300 mb-1.5">Date of Weigh-In *</label>
+              <input type="date" id="inputWeighDate" required class="w-full bg-zinc-900 border border-zinc-700 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-brand-green font-mono" />
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold text-zinc-300 mb-1.5">Note (Optional)</label>
+            <input type="text" id="inputWeighNote" placeholder="e.g. Week 1 baseline, feeling lighter" class="w-full bg-zinc-900 border border-zinc-700 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-brand-green" />
+          </div>
+
+          <div class="flex gap-2">
+            <button type="submit" id="weighInSubmitBtn" class="flex-1 py-2.5 rounded-xl bg-brand-green hover:bg-[#8ee600] text-black font-bold text-xs transition flex items-center justify-center gap-1.5 shadow-lg shadow-brand-green/20">
+              <i data-lucide="plus-circle" class="w-4 h-4"></i>
+              <span id="weighInSubmitText">Save Weekly Record</span>
+            </button>
+            <button type="button" id="weighInCancelEditBtn" onclick="cancelWeighInEdit()" class="hidden px-4 py-2.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-semibold text-xs transition">
+              Cancel
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Weight Trend Chart -->
+      <div class="bg-brand-card p-5 rounded-2xl border border-brand-border space-y-3">
+        <div class="flex items-center justify-between">
+          <h3 class="text-xs font-bold text-zinc-300 uppercase tracking-wider">Weight Loss Trajectory</h3>
+          <span class="text-[11px] text-zinc-500 font-mono">Target: 65.0 kg</span>
+        </div>
+        <div class="h-56 w-full">
+          <canvas id="weightTrendChart"></canvas>
+        </div>
+      </div>
+
+      <!-- Weigh-in History Log Table with EDIT & DELETE Options -->
+      <div class="bg-brand-card rounded-2xl border border-brand-border p-4 space-y-3">
+        <div class="flex items-center justify-between border-b border-zinc-800 pb-2">
+          <h3 class="text-xs font-bold text-white uppercase tracking-wider">Weigh-In History Logs</h3>
+          <span class="text-[11px] text-zinc-500" id="weighLogCount">0 entries</span>
+        </div>
+
+        <div class="overflow-x-auto custom-scrollbar">
+          <table class="w-full text-left text-xs">
+            <thead>
+              <tr class="text-zinc-500 border-b border-zinc-800 font-semibold">
+                <th class="py-2.5 px-3">Date</th>
+                <th class="py-2.5 px-3">Weight</th>
+                <th class="py-2.5 px-3">Weekly Change</th>
+                <th class="py-2.5 px-3">Notes</th>
+                <th class="py-2.5 px-3 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="weighInTableBody" class="divide-y divide-zinc-800/60 font-mono">
+              <!-- Dynamically Populated with Edit & Delete actions -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ======================================================== -->
+    <!-- TAB 3: BAD HABITS TRACKER (FREQUENCY & COUNTER)          -->
+    <!-- ======================================================== -->
+    <section id="view-badhabits" class="tab-view hidden space-y-6">
+
+      <!-- Header Banner & Awareness Philosophy -->
+      <div class="bg-brand-card p-5 rounded-2xl border border-brand-border space-y-2">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <div class="w-7 h-7 rounded-lg bg-red-500/20 text-brand-red flex items-center justify-center font-bold">
+              <i data-lucide="shield-alert" class="w-4 h-4"></i>
+            </div>
+            <div>
+              <h2 class="text-base font-bold text-white">Bad Habit & Slip-Up Tracker</h2>
+              <p class="text-xs text-zinc-400">Track triggers and frequencies to build awareness and break loops.</p>
+            </div>
+          </div>
+          <span class="text-xs font-bold px-2.5 py-1 rounded-full bg-red-500/10 text-red-400 border border-red-500/20" id="totalBadHabitsTodayBadge">
+            0 Today
+          </span>
+        </div>
+      </div>
+
+      <!-- Quick Summary Metric Cards -->
+      <div class="grid grid-cols-3 gap-3 text-center">
+        <div class="p-3.5 rounded-2xl bg-brand-card border border-brand-border">
+          <span class="text-[10px] uppercase font-bold text-zinc-500">Today Slips</span>
+          <p id="badHabitsTodayCount" class="text-2xl font-black text-brand-red mt-1">0</p>
+        </div>
+        <div class="p-3.5 rounded-2xl bg-brand-card border border-brand-border">
+          <span class="text-[10px] uppercase font-bold text-zinc-500">This Week</span>
+          <p id="badHabitsWeekCount" class="text-2xl font-black text-brand-amber mt-1">0</p>
+        </div>
+        <div class="p-3.5 rounded-2xl bg-brand-card border border-brand-border">
+          <span class="text-[10px] uppercase font-bold text-zinc-500">All-Time Total</span>
+          <p id="badHabitsAllTimeCount" class="text-2xl font-black text-brand-cyan mt-1">0</p>
+        </div>
+      </div>
+
+      <!-- Interactive Habit Counter Cards -->
+      <div class="space-y-3">
+        <div class="flex items-center justify-between">
+          <h3 class="text-xs font-bold text-zinc-300 uppercase tracking-wider">Active Habits To Curb</h3>
+          <button onclick="openNewHabitModal()" class="text-xs text-brand-green hover:underline flex items-center gap-1 font-semibold">
+            <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+            <span>Add Custom Habit</span>
+          </button>
+        </div>
+
+        <div id="badHabitsListContainer" class="space-y-3">
+          <!-- Dynamically Populated Habit Counter Cards -->
+        </div>
+      </div>
+
+      <!-- Timestamped Event Log -->
+      <div class="bg-brand-card rounded-2xl border border-brand-border p-4 space-y-3">
+        <div class="flex items-center justify-between border-b border-zinc-800 pb-2">
+          <h3 class="text-xs font-bold text-white uppercase tracking-wider">Recent Slip-Up Log</h3>
+          <button onclick="clearHabitLogsPrompt()" class="text-[11px] text-zinc-500 hover:text-red-400 transition">Clear History</button>
+        </div>
+
+        <div id="habitEventLogsContainer" class="space-y-2 max-h-60 overflow-y-auto custom-scrollbar">
+          <!-- Dynamically Populated Event Logs -->
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ========================================== -->
+    <!-- TAB 4: BUDGET PROTEIN & NUTRITION CHEAT    -->
+    <!-- ========================================== -->
+    <section id="view-nutrition" class="tab-view hidden space-y-6">
+
+      <!-- Budget Protein Quick Reference -->
+      <div class="bg-brand-card p-5 rounded-2xl border border-brand-border space-y-4">
+        <div class="flex items-center justify-between border-b border-zinc-800 pb-3">
+          <div>
+            <h2 class="text-base font-bold text-white">Daily 100g Budget Protein Guide</h2>
+            <p class="text-xs text-zinc-400">High-efficiency sources under ₹80–₹100/day</p>
+          </div>
+          <span class="text-xs font-bold px-2.5 py-1 rounded-full bg-brand-green/20 text-brand-green border border-brand-green/30">
+            Target: 100g
+          </span>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+          <div class="p-3.5 rounded-xl bg-zinc-900 border border-zinc-800 space-y-1">
+            <div class="flex justify-between font-bold text-white">
+              <span>Soya Chunks (Raw 50g)</span>
+              <span class="text-brand-green font-mono">~26g Protein</span>
+            </div>
+            <p class="text-zinc-400 text-[11px]">Cost: ~₹6–₹8. Highest protein-to-cost ratio in India. Boil, squeeze water twice, sauté with spices.</p>
+          </div>
+
+          <div class="p-3.5 rounded-xl bg-zinc-900 border border-zinc-800 space-y-1">
+            <div class="flex justify-between font-bold text-white">
+              <span>3 Whole Eggs</span>
+              <span class="text-brand-green font-mono">~19g Protein</span>
+            </div>
+            <p class="text-zinc-400 text-[11px]">Cost: ~₹20–₹22. Complete amino acid profile with healthy fats and choline.</p>
+          </div>
+
+          <div class="p-3.5 rounded-xl bg-zinc-900 border border-zinc-800 space-y-1">
+            <div class="flex justify-between font-bold text-white">
+              <span>1 Cup Thick Dal (Cooked)</span>
+              <span class="text-brand-green font-mono">~9g Protein</span>
+            </div>
+            <p class="text-zinc-400 text-[11px]">Cost: ~₹10–₹12. Moong or masoor dal paired with minimal rice or roti.</p>
+          </div>
+
+          <div class="p-3.5 rounded-xl bg-zinc-900 border border-zinc-800 space-y-1">
+            <div class="flex justify-between font-bold text-white">
+              <span>Curd / Dahi (150g)</span>
+              <span class="text-brand-green font-mono">~6g Protein</span>
+            </div>
+            <p class="text-zinc-400 text-[11px]">Cost: ~₹12. Probiotics support digestion and steady metabolic health.</p>
+          </div>
+
+          <div class="p-3.5 rounded-xl bg-zinc-900 border border-zinc-800 space-y-1">
+            <div class="flex justify-between font-bold text-white">
+              <span>Roasted Chana (35g snack)</span>
+              <span class="text-brand-green font-mono">~8g Protein</span>
+            </div>
+            <p class="text-zinc-400 text-[11px]">Cost: ~₹7–₹8. Crunchy, high-fiber snack that keeps hunger at bay.</p>
+          </div>
+
+          <div class="p-3.5 rounded-xl bg-zinc-900 border border-zinc-800 space-y-1">
+            <div class="flex justify-between font-bold text-white">
+              <span>Toned Milk (250 ml)</span>
+              <span class="text-brand-green font-mono">~8g Protein</span>
+            </div>
+            <p class="text-zinc-400 text-[11px]">Cost: ~₹14–₹16. Perfect warm bedtime drink to aid overnight recovery.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Core Transformation Nutrition Rules -->
+      <div class="bg-brand-card p-5 rounded-2xl border border-brand-border space-y-3">
+        <h3 class="text-xs font-bold text-white uppercase tracking-wider">Non-Negotiable Rules For 65 kg</h3>
+        <ul class="space-y-2 text-xs text-zinc-300">
+          <li class="flex items-start gap-2">
+            <i data-lucide="check" class="w-4 h-4 text-brand-green shrink-0 mt-0.5"></i>
+            <span><strong>Strict Oil Discipline:</strong> 1 tablespoon of oil has ~120 empty calories. Stick to 2–3 teaspoons total per day.</span>
+          </li>
+          <li class="flex items-start gap-2">
+            <i data-lucide="check" class="w-4 h-4 text-brand-green shrink-0 mt-0.5"></i>
+            <span><strong>Eat Protein First:</strong> Always consume your eggs, soya, or curd before finishing your rice or rotis.</span>
+          </li>
+          <li class="flex items-start gap-2">
+            <i data-lucide="check" class="w-4 h-4 text-brand-green shrink-0 mt-0.5"></i>
+            <span><strong>Liquid Calorie Ban:</strong> No fruit juices, sodas, or sweet tea. Drink water, plain lemon water, or black coffee.</span>
+          </li>
+        </ul>
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- MODAL: ADD CUSTOM BAD HABIT -->
+  <div id="customHabitModal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="bg-brand-card border border-brand-border rounded-2xl p-5 max-w-sm w-full space-y-4">
+      <div class="flex items-center justify-between border-b border-zinc-800 pb-2">
+        <h3 class="text-sm font-bold text-white">Track New Bad Habit</h3>
+        <button onclick="closeNewHabitModal()" class="text-zinc-400 hover:text-white">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+
+      <div class="space-y-3">
+        <div>
+          <label class="block text-xs font-semibold text-zinc-300 mb-1">Habit Name *</label>
+          <input type="text" id="newHabitNameInput" placeholder="e.g. Late night snacking, Skipped walk" class="w-full bg-zinc-900 border border-zinc-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-brand-red" />
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-zinc-300 mb-1">Category / Tag</label>
+          <select id="newHabitCategoryInput" class="w-full bg-zinc-900 border border-zinc-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-brand-red">
+            <option value="Diet">Diet / Food</option>
+            <option value="Lifestyle">Lifestyle / Sleep</option>
+            <option value="Productivity">Focus / Digital</option>
+            <option value="General">Other</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="flex gap-2 pt-2">
+        <button onclick="saveCustomBadHabit()" class="flex-1 py-2.5 rounded-xl bg-brand-red hover:bg-red-600 text-white font-bold text-xs transition">Add Habit</button>
+        <button onclick="closeNewHabitModal()" class="px-4 py-2.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-semibold text-xs transition">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST NOTIFICATION CONTAINER -->
+  <div id="toastNotification" class="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-xl bg-zinc-800/95 border border-zinc-700 text-white text-xs font-medium shadow-2xl flex items-center gap-2 transition-all duration-300 opacity-0 pointer-events-none transform translate-y-2">
+    <i data-lucide="bell" class="w-4 h-4 text-brand-green"></i>
+    <span id="toastMessage">Synchronized</span>
+  </div>
+
+  <!-- JAVASCRIPT APPLICATION CORE -->
+  <script>
+    // ==========================================
+    // 1. DATA STATE & STORAGE STRUCTURE
+    // ==========================================
+    const DEFAULT_HABITS = [
+      { id: 'bh_sugar', name: 'Sugary Drink / Sweets', category: 'Diet', icon: 'candy' },
+      { id: 'bh_snack', name: 'Late Night Junk Snacking', category: 'Diet', icon: 'cookie' },
+      { id: 'bh_skipwalk', name: 'Skipped Scheduled Walk', category: 'Activity', icon: 'footprints' },
+      { id: 'bh_latesleep', name: 'Slept Past Midnight', category: 'Lifestyle', icon: 'moon' }
+    ];
+
+    let state = {
+      activeTab: 'daily',
+      activeDateKey: getTodayKey(),
+      checklistData: {},       // key: "YYYY-MM-DD", val: { nutr_protein: true, ... }
+      weighIns: [
+        { id: 'init-baseline', date: '2026-09-15', weight: 76.0, note: 'Starting Weight Baseline' }
+      ],
+      badHabits: DEFAULT_HABITS,
+      badHabitLogs: []        // array of { id, habitId, habitName, timestamp, dateKey }
+    };
+
+    // Load from LocalStorage
+    function loadPersistedState() {
+      try {
+        const storedChecklist = localStorage.getItem('fitTrack_checklist');
+        if (storedChecklist) state.checklistData = JSON.parse(storedChecklist);
+
+        const storedWeighIns = localStorage.getItem('fitTrack_weighins');
+        if (storedWeighIns) state.weighIns = JSON.parse(storedWeighIns);
+
+        const storedBadHabits = localStorage.getItem('fitTrack_badhabits');
+        if (storedBadHabits) state.badHabits = JSON.parse(storedBadHabits);
+
+        const storedBadHabitLogs = localStorage.getItem('fitTrack_badhabit_logs');
+        if (storedBadHabitLogs) state.badHabitLogs = JSON.parse(storedBadHabitLogs);
+      } catch (e) {
+        console.error('Error loading localStorage:', e);
+      }
+    }
+
+    // Save helpers
+    function saveChecklist() {
+      localStorage.setItem('fitTrack_checklist', JSON.stringify(state.checklistData));
+      broadcastSyncEvent('checklist_update');
+    }
+
+    function saveWeighIns() {
+      localStorage.setItem('fitTrack_weighins', JSON.stringify(state.weighIns));
+      broadcastSyncEvent('weighin_update');
+    }
+
+    function saveBadHabits() {
+      localStorage.setItem('fitTrack_badhabits', JSON.stringify(state.badHabits));
+      localStorage.setItem('fitTrack_badhabit_logs', JSON.stringify(state.badHabitLogs));
+      broadcastSyncEvent('badhabits_update');
+    }
+
+    // ==========================================
+    // 2. MULTI-TAB BROADCASTCHANNEL & STORAGE SYNC
+    // ==========================================
+    let syncChannel;
+    try {
+      syncChannel = new BroadcastChannel('fitTrack_cross_tab_sync');
+      syncChannel.onmessage = (event) => {
+        handleCrossTabMessage(event.data);
+      };
+    } catch (e) {
+      console.warn('BroadcastChannel not supported, relying on window storage listener.');
+    }
+
+    window.addEventListener('storage', (event) => {
+      if (event.key && event.key.startsWith('fitTrack_')) {
+        loadPersistedState();
+        refreshAllViews();
+        flashSyncBeacon();
+      }
+    });
+
+    function broadcastSyncEvent(actionType) {
+      if (syncChannel) {
+        syncChannel.postMessage({ type: actionType, timestamp: Date.now() });
+      }
+    }
+
+    function handleCrossTabMessage(data) {
+      loadPersistedState();
+      refreshAllViews();
+      flashSyncBeacon();
+      showToast('Data synced from another tab');
+    }
+
+    function flashSyncBeacon() {
+      const beacon = document.getElementById('crossTabBeacon');
+      if (beacon) {
+        beacon.classList.add('bg-emerald-500/40', 'border-emerald-400');
+        setTimeout(() => {
+          beacon.classList.remove('bg-emerald-500/40', 'border-emerald-400');
+        }, 1200);
+      }
+    }
+
+    // ==========================================
+    // 3. REAL-TIME CLOCK & AUTO MIDNIGHT ROLLOVER
+    // ==========================================
+    let lastCheckedDateString = '';
+
+    function initRealtimeClock() {
+      updateClockDisplay();
+      setInterval(updateClockDisplay, 1000);
+    }
+
+    function updateClockDisplay() {
+      const now = new Date();
+      
+      // Clock: 12-hour format with AM/PM
+      let hours = now.getHours();
+      const minutes = String(now.getMinutes()).padStart(2, '0');
+      const seconds = String(now.getSeconds()).padStart(2, '0');
+      const ampm = hours >= 12 ? 'PM' : 'AM';
+      hours = hours % 12;
+      hours = hours ? hours : 12; 
+      const timeStr = `${String(hours).padStart(2, '0')}:${minutes}:${seconds} ${ampm}`;
+
+      const liveClockEl = document.getElementById('liveClock');
+      if (liveClockEl) liveClockEl.textContent = timeStr;
+
+      // Calendar Date
+      const options = { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' };
+      const dateStr = now.toLocaleDateString('en-IN', options);
+      const liveDateEl = document.getElementById('liveDate');
+      if (liveDateEl) liveDateEl.textContent = dateStr;
+
+      // Automatic Midnight Rollover Check
+      const todayKey = getTodayKey();
+      if (lastCheckedDateString && lastCheckedDateString !== todayKey) {
+        // Midnight has passed!
+        state.activeDateKey = todayKey;
+        renderDailyChecklist();
+        renderBadHabitsView();
+        showToast('Midnight rollover: New day checklist loaded!');
+      }
+      lastCheckedDateString = todayKey;
+    }
+
+    function getTodayKey() {
+      const now = new Date();
+      const y = now.getFullYear();
+      const m = String(now.getMonth() + 1).padStart(2, '0');
+      const d = String(now.getDate()).padStart(2, '0');
+      return `${y}-${m}-${d}`;
+    }
+
+    // ==========================================
+    // 4. TAB NAVIGATION
+    // ==========================================
+    function switchTab(tabId) {
+      state.activeTab = tabId;
+      document.querySelectorAll('.tab-view').forEach(view => view.classList.add('hidden'));
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('bg-brand-green', 'text-black', 'shadow-lg', 'shadow-brand-green/20');
+        btn.classList.add('text-zinc-400');
+      });
+
+      const activeView = document.getElementById(`view-${tabId}`);
+      const activeBtn = document.getElementById(`tabBtn-${tabId}`);
+
+      if (activeView) activeView.classList.remove('hidden');
+      if (activeBtn) {
+        activeBtn.classList.add('bg-brand-green', 'text-black', 'shadow-lg', 'shadow-brand-green/20');
+        activeBtn.classList.remove('text-zinc-400');
+      }
+
+      if (tabId === 'weighin') {
+        renderWeighInTable();
+        updateWeightTrendChart();
+      } else if (tabId === 'badhabits') {
+        renderBadHabitsView();
+      }
+    }
+
+    // ==========================================
+    // 5. DAILY CHECKLIST LOGIC & CALCULATION
+    // ==========================================
+    const HABIT_KEYS = [
+      'nutr_protein', 'nutr_oil', 'nutr_carbs', 'nutr_sugar', 'nutr_water',
+      'act_steps', 'act_postwalk', 'act_strength',
+      'rec_sleep', 'rec_dinner'
+    ];
+
+    function toggleChecklist(habitKey) {
+      if (!state.checklistData[state.activeDateKey]) {
+        state.checklistData[state.activeDateKey] = {};
+      }
+      const chk = document.getElementById(`chk-${habitKey}`);
+      if (chk) {
+        state.checklistData[state.activeDateKey][habitKey] = chk.checked;
+        saveChecklist();
+        updateDailyScoreDisplay();
+      }
+    }
+
+    function renderDailyChecklist() {
+      // Date title updates
+      const isToday = state.activeDateKey === getTodayKey();
+      const viewingTitle = document.getElementById('currentViewingDate');
+      const viewingSub = document.getElementById('viewingSubDate');
+      const todayBadge = document.getElementById('todayBadge');
+
+      const dateObj = new Date(state.activeDateKey + 'T00:00:00');
+      const dateText = dateObj.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'short', year: 'numeric' });
+
+      if (viewingTitle) viewingTitle.textContent = isToday ? 'Today' : dateObj.toLocaleDateString('en-IN', { month: 'short', day: 'numeric' });
+      if (viewingSub) viewingSub.textContent = dateText;
+      if (todayBadge) {
+        if (isToday) todayBadge.classList.remove('hidden');
+        else todayBadge.classList.add('hidden');
+      }
+
+      const dayData = state.checklistData[state.activeDateKey] || {};
+      HABIT_KEYS.forEach(k => {
+        const input = document.getElementById(`chk-${k}`);
+        if (input) {
+          input.checked = !!dayData[k];
+        }
+      });
+
+      updateDailyScoreDisplay();
+    }
+
+    function changeActiveDay(delta) {
+      const current = new Date(state.activeDateKey + 'T00:00:00');
+      current.setDate(current.getDate() + delta);
+      const y = current.getFullYear();
+      const m = String(current.getMonth() + 1).padStart(2, '0');
+      const d = String(current.getDate()).padStart(2, '0');
+      state.activeDateKey = `${y}-${m}-${d}`;
+      renderDailyChecklist();
+    }
+
+    function jumpToToday() {
+      state.activeDateKey = getTodayKey();
+      renderDailyChecklist();
+    }
+
+    function updateDailyScoreDisplay() {
+      const dayData = state.checklistData[state.activeDateKey] || {};
+      let totalScore = 0;
+      let nutr = 0;
+      let act = 0;
+      let rec = 0;
+
+      // Nutrition (50)
+      ['nutr_protein', 'nutr_oil', 'nutr_carbs', 'nutr_sugar', 'nutr_water'].forEach(k => {
+        if (dayData[k]) { totalScore += 10; nutr += 10; }
+      });
+      // Activity (30)
+      ['act_steps', 'act_postwalk', 'act_strength'].forEach(k => {
+        if (dayData[k]) { totalScore += 10; act += 10; }
+      });
+      // Recovery (20)
+      ['rec_sleep', 'rec_dinner'].forEach(k => {
+        if (dayData[k]) { totalScore += 10; rec += 10; }
+      });
+
+      // Update UI numbers
+      document.getElementById('scoreText').textContent = totalScore;
+      document.getElementById('nutritionScore').textContent = `${nutr}/50 pts`;
+      document.getElementById('activityScore').textContent = `${act}/30 pts`;
+      document.getElementById('recoveryScore').textContent = `${rec}/20 pts`;
+
+      // Apple fitness style ring animation
+      const ring = document.getElementById('scoreRingProgress');
+      const circumference = 263.89; // 2 * pi * 42
+      const offset = circumference - (totalScore / 100) * circumference;
+      ring.style.strokeDashoffset = offset;
+
+      // Status message
+      const msg = document.getElementById('scoreStatusMessage');
+      if (totalScore === 100) msg.textContent = '🔥 Perfect Day! Full targets hit!';
+      else if (totalScore >= 80) msg.textContent = '💪 Excellent discipline! Solid deficit.';
+      else if (totalScore >= 50) msg.textContent = '⚡ Good momentum, keep hitting targets.';
+      else msg.textContent = 'Start checking off habits today.';
+
+      updateStreakCount();
+    }
+
+    function updateStreakCount() {
+      let streak = 0;
+      let checkDate = new Date();
+      // Check back consecutively
+      for (let i = 0; i < 60; i++) {
+        const y = checkDate.getFullYear();
+        const m = String(checkDate.getMonth() + 1).padStart(2, '0');
+        const d = String(checkDate.getDate()).padStart(2, '0');
+        const dateKey = `${y}-${m}-${d}`;
+
+        const dayData = state.checklistData[dateKey] || {};
+        let score = 0;
+        HABIT_KEYS.forEach(k => { if (dayData[k]) score += 10; });
+
+        if (score >= 80) {
+          streak++;
+        } else {
+          // If today has less than 80, only break if not today
+          if (i !== 0) break;
+        }
+        checkDate.setDate(checkDate.getDate() - 1);
+      }
+      document.getElementById('streakCount').textContent = streak;
+    }
+
+    // ========================================================
+    // 6. WEEKLY WEIGH-IN (NO WAIST, EDITABLE & DELETABLE LOGS)
+    // ========================================================
+    let weightChartInstance = null;
+
+    function handleWeighInSubmit(e) {
+      e.preventDefault();
+      const weightVal = parseFloat(document.getElementById('inputWeight').value);
+      const dateVal = document.getElementById('inputWeighDate').value;
+      const noteVal = document.getElementById('inputWeighNote').value.trim();
+      const editingId = document.getElementById('editWeighInId').value;
+
+      if (!weightVal || !dateVal) return;
+
+      if (editingId) {
+        // Edit existing entry
+        const entry = state.weighIns.find(item => item.id === editingId);
+        if (entry) {
+          entry.weight = weightVal;
+          entry.date = dateVal;
+          entry.note = noteVal;
+          showToast('Weigh-in updated successfully');
+        }
+        cancelWeighInEdit();
+      } else {
+        // Add new entry
+        const newRecord = {
+          id: 'weigh_' + Date.now(),
+          date: dateVal,
+          weight: weightVal,
+          note: noteVal
+        };
+        state.weighIns.push(newRecord);
+        showToast('New weekly weight saved');
+      }
+
+      // Sort by date ascending
+      state.weighIns.sort((a, b) => new Date(a.date) - new Date(b.date));
+      saveWeighIns();
+      renderWeighInTable();
+      updateWeightTrendChart();
+      resetWeighInForm();
+    }
+
+    function editWeighInRecord(recordId) {
+      const record = state.weighIns.find(item => item.id === recordId);
+      if (!record) return;
+
+      document.getElementById('editWeighInId').value = record.id;
+      document.getElementById('inputWeight').value = record.weight;
+      document.getElementById('inputWeighDate').value = record.date;
+      document.getElementById('inputWeighNote').value = record.note || '';
+
+      document.getElementById('weighInFormTitle').textContent = 'Edit Weigh-In Record';
+      document.getElementById('weighInSubmitText').textContent = 'Update Record';
+      document.getElementById('weighInCancelEditBtn').classList.remove('hidden');
+
+      // Scroll to form smoothly
+      document.getElementById('weighInForm').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    function cancelWeighInEdit() {
+      resetWeighInForm();
+    }
+
+    function resetWeighInForm() {
+      document.getElementById('editWeighInId').value = '';
+      document.getElementById('inputWeight').value = '';
+      document.getElementById('inputWeighDate').value = getTodayKey();
+      document.getElementById('inputWeighNote').value = '';
+
+      document.getElementById('weighInFormTitle').textContent = 'Record Weekly Weigh-In';
+      document.getElementById('weighInSubmitText').textContent = 'Save Weekly Record';
+      document.getElementById('weighInCancelEditBtn').classList.add('hidden');
+    }
+
+    function deleteWeighInRecord(recordId) {
+      if (confirm('Are you sure you want to delete this weigh-in record?')) {
+        state.weighIns = state.weighIns.filter(item => item.id !== recordId);
+        saveWeighIns();
+        renderWeighInTable();
+        updateWeightTrendChart();
+        showToast('Record deleted');
+      }
+    }
+
+    function renderWeighInTable() {
+      const tbody = document.getElementById('weighInTableBody');
+      tbody.innerHTML = '';
+
+      const countEl = document.getElementById('weighLogCount');
+      if (countEl) countEl.textContent = `${state.weighIns.length} records`;
+
+      if (state.weighIns.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" class="py-4 text-center text-zinc-500">No weigh-in records found. Add one above.</td></tr>`;
+        return;
+      }
+
+      // Compute latest metrics for top cards
+      const latest = state.weighIns[state.weighIns.length - 1];
+      const startWeight = 76.0;
+      const currentWeight = latest ? latest.weight : 76.0;
+      const targetWeight = 65.0;
+      const lost = (startWeight - currentWeight).toFixed(1);
+
+      document.getElementById('currentWeightDisplay').textContent = `Current: ${currentWeight} kg`;
+      document.getElementById('weightLostBadge').textContent = `${lost >= 0 ? lost : 0} kg Lost`;
+
+      // Progress bar percentage (76kg -> 65kg is 11kg span)
+      const progress = Math.min(Math.max(((startWeight - currentWeight) / (startWeight - targetWeight)) * 100, 4), 100);
+      document.getElementById('transformationProgressBar').style.width = `${progress}%`;
+
+      // Render table rows in reverse chronological order (newest on top)
+      const reversedLogs = [...state.weighIns].reverse();
+
+      reversedLogs.forEach((item, index) => {
+        const origIndex = state.weighIns.findIndex(w => w.id === item.id);
+        const prevItem = origIndex > 0 ? state.weighIns[origIndex - 1] : null;
+        let diffHtml = '<span class="text-zinc-500">—</span>';
+
+        if (prevItem) {
+          const diff = (item.weight - prevItem.weight).toFixed(1);
+          if (diff < 0) {
+            diffHtml = `<span class="text-brand-green font-bold flex items-center gap-0.5">↓ ${Math.abs(diff)} kg</span>`;
+          } else if (diff > 0) {
+            diffHtml = `<span class="text-brand-red font-bold flex items-center gap-0.5">↑ +${diff} kg</span>`;
+          } else {
+            diffHtml = `<span class="text-zinc-400">0.0 kg</span>`;
+          }
+        }
+
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-zinc-800/40 transition';
+        tr.innerHTML = `
+          <td class="py-3 px-3 text-zinc-300 font-medium whitespace-nowrap">${item.date}</td>
+          <td class="py-3 px-3 text-white font-bold whitespace-nowrap">${item.weight.toFixed(1)} kg</td>
+          <td class="py-3 px-3 whitespace-nowrap">${diffHtml}</td>
+          <td class="py-3 px-3 text-zinc-400 font-sans text-[11px] max-w-[150px] truncate" title="${item.note || ''}">${item.note || '—'}</td>
+          <td class="py-3 px-3 text-right whitespace-nowrap">
+            <button onclick="editWeighInRecord('${item.id}')" class="px-2 py-1 rounded bg-zinc-800 hover:bg-zinc-700 text-brand-cyan hover:text-white mr-1.5 transition text-[11px]">
+              Edit
+            </button>
+            <button onclick="deleteWeighInRecord('${item.id}')" class="px-2 py-1 rounded bg-zinc-800 hover:bg-red-900/60 text-zinc-400 hover:text-red-400 transition text-[11px]">
+              Delete
+            </button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      lucide.createIcons();
+    }
+
+    function updateWeightTrendChart() {
+      const ctx = document.getElementById('weightTrendChart');
+      if (!ctx) return;
+
+      const labels = state.weighIns.map(w => w.date);
+      const dataWeights = state.weighIns.map(w => w.weight);
+
+      if (weightChartInstance) {
+        weightChartInstance.destroy();
+      }
+
+      weightChartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [
+            {
+              label: 'Actual Weight (kg)',
+              data: dataWeights,
+              borderColor: '#A1FF00',
+              backgroundColor: 'rgba(161, 255, 0, 0.1)',
+              borderWidth: 3,
+              fill: true,
+              tension: 0.3,
+              pointBackgroundColor: '#A1FF00',
+              pointRadius: 4
+            },
+            {
+              label: 'Target (65.0 kg)',
+              data: labels.map(() => 65.0),
+              borderColor: '#FA114F',
+              borderDash: [5, 5],
+              borderWidth: 1.5,
+              fill: false,
+              pointRadius: 0
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              labels: { color: '#9CA3AF', font: { size: 10 } }
+            }
+          },
+          scales: {
+            x: {
+              grid: { color: '#1F2937' },
+              ticks: { color: '#9CA3AF', font: { size: 10 } }
+            },
+            y: {
+              min: 60,
+              max: 80,
+              grid: { color: '#1F2937' },
+              ticks: { color: '#9CA3AF', font: { size: 10 } }
+            }
+          }
+        }
+      });
+    }
+
+    // ========================================================
+    // 7. BAD HABITS TRACKER (FREQUENCY & COUNTER LOGIC)
+    // ========================================================
+    function renderBadHabitsView() {
+      const container = document.getElementById('badHabitsListContainer');
+      container.innerHTML = '';
+
+      const todayStr = getTodayKey();
+
+      // Calculate totals
+      let todaySlips = 0;
+      let weekSlips = 0;
+      let allTimeSlips = state.badHabitLogs.length;
+
+      const oneWeekAgo = new Date();
+      oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+
+      state.badHabitLogs.forEach(log => {
+        if (log.dateKey === todayStr) todaySlips++;
+        const logDate = new Date(log.timestamp);
+        if (logDate >= oneWeekAgo) weekSlips++;
+      });
+
+      document.getElementById('badHabitsTodayCount').textContent = todaySlips;
+      document.getElementById('badHabitsWeekCount').textContent = weekSlips;
+      document.getElementById('badHabitsAllTimeCount').textContent = allTimeSlips;
+      document.getElementById('totalBadHabitsTodayBadge').textContent = `${todaySlips} Today`;
+
+      // Render habit counter cards
+      state.badHabits.forEach(habit => {
+        // Count times triggered today
+        const habitTodayCount = state.badHabitLogs.filter(
+          log => log.habitId === habit.id && log.dateKey === todayStr
+        ).length;
+
+        // Count times triggered all time
+        const habitTotalCount = state.badHabitLogs.filter(
+          log => log.habitId === habit.id
+        ).length;
+
+        const card = document.createElement('div');
+        card.className = 'bg-brand-card rounded-2xl border border-brand-border p-4 flex items-center justify-between gap-3 hover:border-zinc-700 transition';
+        card.innerHTML = `
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-red-950/40 border border-red-500/20 text-brand-red flex items-center justify-center font-bold">
+              <i data-lucide="${habit.icon || 'alert-triangle'}" class="w-5 h-5"></i>
+            </div>
+            <div>
+              <h4 class="text-sm font-bold text-white">${habit.name}</h4>
+              <div class="flex items-center gap-2 mt-0.5">
+                <span class="text-[10px] text-zinc-400 uppercase font-mono px-2 py-0.5 rounded bg-zinc-900 border border-zinc-800">${habit.category || 'General'}</span>
+                <span class="text-xs text-zinc-400">Total: <strong class="text-zinc-200 font-mono">${habitTotalCount}</strong> times</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <div class="text-right mr-1">
+              <span class="text-[10px] text-zinc-500 uppercase block">Today</span>
+              <span class="text-lg font-black font-mono ${habitTodayCount > 0 ? 'text-brand-red' : 'text-zinc-400'}">${habitTodayCount}</span>
+            </div>
+            <button onclick="decrementHabitCount('${habit.id}')" title="Undo / Minus" class="w-8 h-8 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 flex items-center justify-center font-bold text-base transition">
+              -
+            </button>
+            <button onclick="incrementHabitCount('${habit.id}', '${escapeHtml(habit.name)}')" title="Trigger Slip-Up" class="w-9 h-9 rounded-lg bg-red-600 hover:bg-red-500 text-white flex items-center justify-center font-bold text-lg transition shadow-md shadow-red-600/30">
+              +
+            </button>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+
+      renderHabitEventLogs();
+      lucide.createIcons();
+    }
+
+    function incrementHabitCount(habitId, habitName) {
+      const now = new Date();
+      const logEntry = {
+        id: 'slip_' + Date.now(),
+        habitId: habitId,
+        habitName: habitName,
+        timestamp: now.toISOString(),
+        dateKey: getTodayKey(),
+        timeFormatted: now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })
+      };
+
+      state.badHabitLogs.unshift(logEntry); // add to top
+      saveBadHabits();
+      renderBadHabitsView();
+      showToast(`Logged slip-up: ${habitName}`);
+    }
+
+    function decrementHabitCount(habitId) {
+      const todayStr = getTodayKey();
+      const idx = state.badHabitLogs.findIndex(log => log.habitId === habitId && log.dateKey === todayStr);
+
+      if (idx !== -1) {
+        state.badHabitLogs.splice(idx, 1);
+        saveBadHabits();
+        renderBadHabitsView();
+        showToast('Removed last logged slip-up');
+      } else {
+        showToast('No entries found for today to remove');
+      }
+    }
+
+    function renderHabitEventLogs() {
+      const container = document.getElementById('habitEventLogsContainer');
+      container.innerHTML = '';
+
+      if (state.badHabitLogs.length === 0) {
+        container.innerHTML = `<p class="text-xs text-zinc-500 text-center py-4">No slip-ups logged yet. Keep your discipline strong!</p>`;
+        return;
+      }
+
+      // Display most recent 20 logs
+      const recentLogs = state.badHabitLogs.slice(0, 20);
+
+      recentLogs.forEach(item => {
+        const div = document.createElement('div');
+        div.className = 'flex items-center justify-between p-2.5 rounded-xl bg-zinc-900/60 border border-zinc-800 text-xs';
+        div.innerHTML = `
+          <div class="flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-brand-red"></span>
+            <span class="font-semibold text-zinc-200">${item.habitName}</span>
+          </div>
+          <div class="flex items-center gap-3">
+            <span class="text-zinc-500 font-mono text-[11px]">${item.dateKey} at ${item.timeFormatted || ''}</span>
+            <button onclick="deleteSpecificHabitLog('${item.id}')" class="text-zinc-500 hover:text-red-400 p-1">
+              <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+            </button>
+          </div>
+        `;
+        container.appendChild(div);
+      });
+      lucide.createIcons();
+    }
+
+    function deleteSpecificHabitLog(logId) {
+      state.badHabitLogs = state.badHabitLogs.filter(log => log.id !== logId);
+      saveBadHabits();
+      renderBadHabitsView();
+      showToast('Slip-up event removed');
+    }
+
+    function clearHabitLogsPrompt() {
+      if (confirm('Are you sure you want to clear your entire slip-up history?')) {
+        state.badHabitLogs = [];
+        saveBadHabits();
+        renderBadHabitsView();
+        showToast('All slip-up logs cleared');
+      }
+    }
+
+    // Modal logic for Custom Bad Habit
+    function openNewHabitModal() {
+      document.getElementById('customHabitModal').classList.remove('hidden');
+      document.getElementById('customHabitModal').classList.add('flex');
+      document.getElementById('newHabitNameInput').focus();
+    }
+
+    function closeNewHabitModal() {
+      document.getElementById('customHabitModal').classList.add('hidden');
+      document.getElementById('customHabitModal').classList.remove('flex');
+      document.getElementById('newHabitNameInput').value = '';
+    }
+
+    function saveCustomBadHabit() {
+      const name = document.getElementById('newHabitNameInput').value.trim();
+      const category = document.getElementById('newHabitCategoryInput').value;
+
+      if (!name) {
+        alert('Please enter a habit name');
+        return;
+      }
+
+      const newHabit = {
+        id: 'bh_' + Date.now(),
+        name: name,
+        category: category,
+        icon: category === 'Diet' ? 'utensils' : category === 'Lifestyle' ? 'clock' : 'alert-circle'
+      };
+
+      state.badHabits.push(newHabit);
+      saveBadHabits();
+      closeNewHabitModal();
+      renderBadHabitsView();
+      showToast('Custom bad habit added');
+    }
+
+    function escapeHtml(text) {
+      return text.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+    }
+
+    // ==========================================
+    // 8. GLOBAL TOAST & UI REFRESH
+    // ==========================================
+    let toastTimeout;
+    function showToast(message) {
+      const toast = document.getElementById('toastNotification');
+      const text = document.getElementById('toastMessage');
+      if (!toast || !text) return;
+
+      text.textContent = message;
+      toast.classList.remove('opacity-0', 'translate-y-2', 'pointer-events-none');
+      toast.classList.add('opacity-100', 'translate-y-0');
+
+      clearTimeout(toastTimeout);
+      toastTimeout = setTimeout(() => {
+        toast.classList.remove('opacity-100', 'translate-y-0');
+        toast.classList.add('opacity-0', 'translate-y-2', 'pointer-events-none');
+      }, 2500);
+    }
+
+    function refreshAllViews() {
+      renderDailyChecklist();
+      renderWeighInTable();
+      updateWeightTrendChart();
+      renderBadHabitsView();
+    }
+
+    // ==========================================
+    // 9. APP INITIALIZATION
+    // ==========================================
+    document.addEventListener('DOMContentLoaded', () => {
+      loadPersistedState();
+      initRealtimeClock();
+      document.getElementById('inputWeighDate').value = getTodayKey();
+      renderDailyChecklist();
+      renderWeighInTable();
+      renderBadHabitsView();
+      lucide.createIcons();
+    });
+  </script>
+</body>
+</html>
