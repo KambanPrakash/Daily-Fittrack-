@@ -68,12 +68,16 @@
         if (cloudData.badHabits) state.badHabits = cloudData.badHabits;
         if (cloudData.badHabitLogs) state.badHabitLogs = cloudData.badHabitLogs;
         if (cloudData.winterArcStart) state.winterArcStart = cloudData.winterArcStart;
+        if (cloudData.dailyNotes) state.dailyNotes = cloudData.dailyNotes;
+        if (cloudData.permanentNote !== undefined) state.permanentNote = cloudData.permanentNote;
 
         localStorage.setItem('winterArc_checklist', JSON.stringify(state.checklistData));
         localStorage.setItem('winterArc_weighins', JSON.stringify(state.weighIns));
         localStorage.setItem('winterArc_badhabits', JSON.stringify(state.badHabits));
         localStorage.setItem('winterArc_badhabit_logs', JSON.stringify(state.badHabitLogs));
         localStorage.setItem('winterArc_start', state.winterArcStart);
+        localStorage.setItem('winterArc_daily_notes', JSON.stringify(state.dailyNotes));
+        localStorage.setItem('winterArc_perm_note', state.permanentNote);
 
         refreshAllViews();
         flashSyncBeacon('Cloud Sync Active');
@@ -93,6 +97,8 @@
           badHabits: state.badHabits,
           badHabitLogs: state.badHabitLogs,
           winterArcStart: state.winterArcStart,
+          dailyNotes: state.dailyNotes,
+          permanentNote: state.permanentNote,
           updatedAt: new Date().toISOString()
         }, { merge: true });
         flashSyncBeacon('Saved to Cloud');
@@ -139,7 +145,7 @@
     </div>
   </header>
 
-  <!-- NAVIGATION TABS (3-COLUMN LAYOUT) -->
+  <!-- NAVIGATION TABS (3 TABS) -->
   <nav class="max-w-4xl mx-auto px-4 mt-4">
     <div class="grid grid-cols-3 gap-2 p-1.5 bg-slate-200/70 rounded-2xl border border-slate-200 text-xs font-semibold">
       <button onclick="switchTab('daily')" id="tabBtn-daily" class="tab-btn py-2.5 rounded-xl flex items-center justify-center gap-1.5 transition-all text-white bg-sky-600 shadow-sm">
@@ -271,6 +277,48 @@
           <!-- Injected dynamically -->
         </div>
       </div>
+
+      <!-- NEW: NOTES & JOURNAL SECTION (AT BOTTOM OF PAGE 1) -->
+      <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 space-y-3">
+        <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+          <div class="flex items-center gap-2 text-slate-900 font-bold text-sm">
+            <i data-lucide="notebook-pen" class="w-4 h-4 text-sky-600"></i>
+            <span>Arc Notes & Journal</span>
+          </div>
+          <span id="noteSavedStatus" class="text-[10px] text-slate-400 font-mono">Auto-saved</span>
+        </div>
+
+        <!-- 2 Note Tabs: Daily Note vs Permanent Note -->
+        <div class="flex items-center gap-1.5 p-1 bg-slate-100 rounded-xl text-xs font-semibold">
+          <button onclick="switchNoteTab('daily')" id="noteTabBtn-daily" class="flex-1 py-1.5 rounded-lg bg-white text-slate-900 shadow-xs flex items-center justify-center gap-1.5 transition">
+            <i data-lucide="calendar" class="w-3.5 h-3.5 text-sky-600"></i>
+            <span id="dailyNoteTabTitle">Today's Note</span>
+          </button>
+          <button onclick="switchNoteTab('permanent')" id="noteTabBtn-permanent" class="flex-1 py-1.5 rounded-lg text-slate-500 hover:text-slate-800 flex items-center justify-center gap-1.5 transition">
+            <i data-lucide="pin" class="w-3.5 h-3.5 text-amber-500"></i>
+            <span>Permanent Note (All Days)</span>
+          </button>
+        </div>
+
+        <!-- Note View 1: Specific Date Note -->
+        <div id="noteContainer-daily" class="space-y-1.5">
+          <div class="flex items-center justify-between text-[11px] text-slate-500">
+            <span>Notes for: <strong id="dailyNoteDateLabel" class="text-slate-700">Today</strong></span>
+            <span>(Specific to this date)</span>
+          </div>
+          <textarea id="dailyNoteTextarea" oninput="handleDailyNoteInput(this.value)" rows="4" placeholder="How did today go? Write down workouts, feelings, struggles, meal details, or wins..." class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-800 focus:outline-none focus:border-sky-500 resize-none leading-relaxed font-sans"></textarea>
+        </div>
+
+        <!-- Note View 2: Permanent / All-Days Note -->
+        <div id="noteContainer-permanent" class="space-y-1.5 hidden">
+          <div class="flex items-center justify-between text-[11px] text-slate-500">
+            <span>Winter Arc Manifesto & Rules</span>
+            <span class="text-amber-600 font-medium">★ Constant across all 90 days</span>
+          </div>
+          <textarea id="permanentNoteTextarea" oninput="handlePermanentNoteInput(this.value)" rows="4" placeholder="Write your non-negotiables, personal mantras, master goals, or rules that must never change throughout the 90 days..." class="w-full bg-amber-50/50 border border-amber-200/80 rounded-xl p-3 text-xs text-slate-800 focus:outline-none focus:border-amber-500 resize-none leading-relaxed font-sans"></textarea>
+        </div>
+      </div>
+
     </section>
 
     <!-- TAB 2: WEEKLY WEIGH-IN (NO WAIST, FULLY EDITABLE) -->
@@ -532,9 +580,12 @@
 
     let state = {
       activeTab: 'daily',
+      activeNoteTab: 'daily',
       activeDateKey: getTodayKey(),
       winterArcStart: getTodayKey(),
       checklistData: {},
+      dailyNotes: {},
+      permanentNote: '',
       weighIns: [
         { id: 'init-baseline', date: '2026-09-15', weight: 76.0, note: 'Starting Baseline' }
       ],
@@ -566,6 +617,12 @@
 
         const storedStart = localStorage.getItem('winterArc_start');
         if (storedStart) state.winterArcStart = storedStart;
+
+        const storedDailyNotes = localStorage.getItem('winterArc_daily_notes');
+        if (storedDailyNotes) state.dailyNotes = JSON.parse(storedDailyNotes);
+
+        const storedPermNote = localStorage.getItem('winterArc_perm_note');
+        if (storedPermNote !== null && storedPermNote !== undefined) state.permanentNote = storedPermNote;
       } catch (e) {
         console.error('Local load error:', e);
       }
@@ -573,6 +630,12 @@
 
     function saveChecklist() {
       localStorage.setItem('winterArc_checklist', JSON.stringify(state.checklistData));
+      if (window.syncToCloud) window.syncToCloud();
+    }
+
+    function saveNotes() {
+      localStorage.setItem('winterArc_daily_notes', JSON.stringify(state.dailyNotes));
+      localStorage.setItem('winterArc_perm_note', state.permanentNote);
       if (window.syncToCloud) window.syncToCloud();
     }
 
@@ -585,6 +648,82 @@
       localStorage.setItem('winterArc_badhabits', JSON.stringify(state.badHabits));
       localStorage.setItem('winterArc_badhabit_logs', JSON.stringify(state.badHabitLogs));
       if (window.syncToCloud) window.syncToCloud();
+    }
+
+    // Notes Handlers
+    let noteDebounceTimeout = null;
+
+    function handleDailyNoteInput(val) {
+      if (!state.dailyNotes) state.dailyNotes = {};
+      state.dailyNotes[state.activeDateKey] = val;
+      indicateNoteSaving();
+      clearTimeout(noteDebounceTimeout);
+      noteDebounceTimeout = setTimeout(() => {
+        saveNotes();
+        indicateNoteSaved();
+      }, 700);
+    }
+
+    function handlePermanentNoteInput(val) {
+      state.permanentNote = val;
+      indicateNoteSaving();
+      clearTimeout(noteDebounceTimeout);
+      noteDebounceTimeout = setTimeout(() => {
+        saveNotes();
+        indicateNoteSaved();
+      }, 700);
+    }
+
+    function indicateNoteSaving() {
+      const el = document.getElementById('noteSavedStatus');
+      if (el) el.textContent = 'Saving...';
+    }
+
+    function indicateNoteSaved() {
+      const el = document.getElementById('noteSavedStatus');
+      if (el) el.textContent = 'Saved to cloud';
+    }
+
+    function switchNoteTab(type) {
+      state.activeNoteTab = type;
+      const dailyBtn = document.getElementById('noteTabBtn-daily');
+      const permBtn = document.getElementById('noteTabBtn-permanent');
+      const dailyContainer = document.getElementById('noteContainer-daily');
+      const permContainer = document.getElementById('noteContainer-permanent');
+
+      if (type === 'daily') {
+        dailyBtn.className = 'flex-1 py-1.5 rounded-lg bg-white text-slate-900 shadow-xs flex items-center justify-center gap-1.5 transition font-semibold';
+        permBtn.className = 'flex-1 py-1.5 rounded-lg text-slate-500 hover:text-slate-800 flex items-center justify-center gap-1.5 transition font-semibold';
+        dailyContainer.classList.remove('hidden');
+        permContainer.classList.add('hidden');
+      } else {
+        permBtn.className = 'flex-1 py-1.5 rounded-lg bg-white text-slate-900 shadow-xs flex items-center justify-center gap-1.5 transition font-semibold';
+        dailyBtn.className = 'flex-1 py-1.5 rounded-lg text-slate-500 hover:text-slate-800 flex items-center justify-center gap-1.5 transition font-semibold';
+        dailyContainer.classList.add('hidden');
+        permContainer.classList.remove('hidden');
+      }
+    }
+
+    function renderNotesView() {
+      const isToday = state.activeDateKey === getTodayKey();
+      const dateObj = new Date(state.activeDateKey + 'T00:00:00');
+      const label = isToday ? 'Today' : dateObj.toLocaleDateString('en-IN', { month: 'short', day: 'numeric' });
+
+      const dateLabel = document.getElementById('dailyNoteDateLabel');
+      if (dateLabel) dateLabel.textContent = label;
+
+      const titleEl = document.getElementById('dailyNoteTabTitle');
+      if (titleEl) titleEl.textContent = isToday ? "Today's Note" : `${label} Note`;
+
+      const dailyTextarea = document.getElementById('dailyNoteTextarea');
+      if (dailyTextarea) {
+        dailyTextarea.value = (state.dailyNotes && state.dailyNotes[state.activeDateKey]) || '';
+      }
+
+      const permTextarea = document.getElementById('permanentNoteTextarea');
+      if (permTextarea) {
+        permTextarea.value = state.permanentNote || '';
+      }
     }
 
     // Real-Time Clock & Midnight Rollover
@@ -614,6 +753,7 @@
       if (lastCheckedDateString && lastCheckedDateString !== todayKey) {
         state.activeDateKey = todayKey;
         renderDailyChecklist();
+        renderNotesView();
         renderBadHabitsView();
         updateArcProgressBanner();
         showToast('Midnight rollover: New day loaded');
@@ -714,6 +854,7 @@
 
       updateDailyScoreDisplay();
       updateArcProgressBanner();
+      renderNotesView();
     }
 
     function changeActiveDay(delta) {
@@ -1183,6 +1324,7 @@
       updateWeightTrendChart();
       renderBadHabitsView();
       updateArcProgressBanner();
+      renderNotesView();
     }
 
     // App Initialization
@@ -1195,6 +1337,7 @@
       renderWeighInTable();
       renderBadHabitsView();
       updateArcProgressBanner();
+      renderNotesView();
       lucide.createIcons();
     });
   </script>
