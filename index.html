@@ -3,35 +3,13 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>FitTrack Pro - Live Sync</title>
+  <title>Winter Arc 90-Day FitTrack</title>
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Chart.js for Weight Visualization -->
+  <!-- Chart.js for Weight Trend -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <!-- Lucide Icons -->
   <script src="https://unpkg.com/lucide@latest"></script>
-  
-  <script>
-    tailwind.config = {
-      darkMode: 'class',
-      theme: {
-        extend: {
-          colors: {
-            brand: {
-              red: '#E11D48',
-              green: '#10B981',
-              cyan: '#0284C7',
-              amber: '#F59E0B',
-              purple: '#8B5CF6',
-              border: '#E2E8F0',
-              card: '#FFFFFF',
-              bg: '#F8FAFC'
-            }
-          }
-        }
-      }
-    }
-  </script>
 
   <style>
     body {
@@ -79,7 +57,7 @@
 
     let isRemoteUpdate = false;
 
-    // Listen for Realtime Cloud Updates (Phone <--> Laptop <--> Multi-Tab)
+    // Real-Time Firestore Sync (Mobile <--> Laptop <--> All Tabs)
     onSnapshot(cloudDocRef, (snapshot) => {
       if (snapshot.exists()) {
         const cloudData = snapshot.data();
@@ -89,22 +67,23 @@
         if (cloudData.weighIns) state.weighIns = cloudData.weighIns;
         if (cloudData.badHabits) state.badHabits = cloudData.badHabits;
         if (cloudData.badHabitLogs) state.badHabitLogs = cloudData.badHabitLogs;
+        if (cloudData.winterArcStart) state.winterArcStart = cloudData.winterArcStart;
 
-        // Cache locally
-        localStorage.setItem('fitTrack_checklist', JSON.stringify(state.checklistData));
-        localStorage.setItem('fitTrack_weighins', JSON.stringify(state.weighIns));
-        localStorage.setItem('fitTrack_badhabits', JSON.stringify(state.badHabits));
-        localStorage.setItem('fitTrack_badhabit_logs', JSON.stringify(state.badHabitLogs));
+        localStorage.setItem('winterArc_checklist', JSON.stringify(state.checklistData));
+        localStorage.setItem('winterArc_weighins', JSON.stringify(state.weighIns));
+        localStorage.setItem('winterArc_badhabits', JSON.stringify(state.badHabits));
+        localStorage.setItem('winterArc_badhabit_logs', JSON.stringify(state.badHabitLogs));
+        localStorage.setItem('winterArc_start', state.winterArcStart);
 
         refreshAllViews();
         flashSyncBeacon('Cloud Sync Active');
         isRemoteUpdate = false;
       }
     }, (error) => {
-      console.warn("Firestore sync warning (check test mode rules):", error);
+      console.warn("Firestore sync notification:", error);
     });
 
-    // Cloud Save Function
+    // Cloud Push
     window.syncToCloud = async function() {
       if (isRemoteUpdate) return;
       try {
@@ -113,6 +92,7 @@
           weighIns: state.weighIns,
           badHabits: state.badHabits,
           badHabitLogs: state.badHabitLogs,
+          winterArcStart: state.winterArcStart,
           updatedAt: new Date().toISOString()
         }, { merge: true });
         flashSyncBeacon('Saved to Cloud');
@@ -124,16 +104,16 @@
 </head>
 <body class="min-h-screen pb-24 md:pb-12 custom-scrollbar">
 
-  <!-- TOP HEADER WITH REAL-TIME CLOCK & MULTI-TAB/CLOUD LIVE BEACON -->
-  <header class="sticky top-0 z-40 bg-white/90 backdrop-blur-md border-b border-brand-border px-4 py-3 sm:px-6 shadow-sm">
+  <!-- TOP HEADER WITH REAL-TIME CLOCK & CLOUD SYNC STATUS -->
+  <header class="sticky top-0 z-40 bg-white/90 backdrop-blur-md border-b border-slate-200 px-4 py-3 sm:px-6 shadow-sm">
     <div class="max-w-4xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
       <div class="flex items-center justify-between w-full sm:w-auto">
         <div class="flex items-center gap-2.5">
-          <div class="w-8 h-8 rounded-lg bg-emerald-600 flex items-center justify-center font-bold text-white text-sm shadow-sm">
-            FT
+          <div class="w-8 h-8 rounded-lg bg-sky-600 flex items-center justify-center font-bold text-white text-base shadow-sm">
+            ❄️
           </div>
           <div>
-            <h1 class="text-base font-bold tracking-tight text-slate-900 leading-tight">FitTrack Pro</h1>
+            <h1 class="text-base font-bold tracking-tight text-slate-900 leading-tight">Winter Arc — 90 Days</h1>
             <p class="text-[11px] text-slate-500 font-medium">Target: 65.0 kg (170 cm)</p>
           </div>
         </div>
@@ -159,12 +139,12 @@
     </div>
   </header>
 
-  <!-- NAVIGATION TABS -->
+  <!-- NAVIGATION TABS (3-COLUMN LAYOUT) -->
   <nav class="max-w-4xl mx-auto px-4 mt-4">
-    <div class="grid grid-cols-4 gap-1.5 p-1 bg-slate-200/70 rounded-2xl border border-slate-200 text-xs font-semibold">
-      <button onclick="switchTab('daily')" id="tabBtn-daily" class="tab-btn py-2.5 rounded-xl flex items-center justify-center gap-1.5 transition-all text-white bg-emerald-600 shadow-sm">
+    <div class="grid grid-cols-3 gap-2 p-1.5 bg-slate-200/70 rounded-2xl border border-slate-200 text-xs font-semibold">
+      <button onclick="switchTab('daily')" id="tabBtn-daily" class="tab-btn py-2.5 rounded-xl flex items-center justify-center gap-1.5 transition-all text-white bg-sky-600 shadow-sm">
         <i data-lucide="check-circle-2" class="w-4 h-4"></i>
-        <span>Daily</span>
+        <span>Winter Arc</span>
       </button>
       <button onclick="switchTab('weighin')" id="tabBtn-weighin" class="tab-btn py-2.5 rounded-xl flex items-center justify-center gap-1.5 transition-all text-slate-600 hover:text-slate-900">
         <i data-lucide="scale" class="w-4 h-4"></i>
@@ -174,19 +154,44 @@
         <i data-lucide="shield-alert" class="w-4 h-4"></i>
         <span>Bad Habits</span>
       </button>
-      <button onclick="switchTab('nutrition')" id="tabBtn-nutrition" class="tab-btn py-2.5 rounded-xl flex items-center justify-center gap-1.5 transition-all text-slate-600 hover:text-slate-900">
-        <i data-lucide="utensils" class="w-4 h-4"></i>
-        <span>Protein & Diet</span>
-      </button>
     </div>
   </nav>
 
   <!-- MAIN APP CONTAINER -->
   <main class="max-w-4xl mx-auto px-4 mt-5 space-y-6">
 
-    <!-- TAB 1: DAILY CHECKLIST & REAL-TIME POINTS -->
-    <section id="view-daily" class="tab-view space-y-6">
+    <!-- TAB 1: WINTER ARC 90-DAYS CHECKLIST -->
+    <section id="view-daily" class="tab-view space-y-5">
       
+      <!-- 90-Day Challenge Master Banner -->
+      <div class="bg-gradient-to-r from-sky-900 to-slate-900 text-white p-5 rounded-2xl shadow-sm border border-slate-800 space-y-3">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <span class="text-xl">❄️</span>
+            <div>
+              <h2 class="text-sm font-bold uppercase tracking-wider text-sky-300">Winter Arc Protocol</h2>
+              <p class="text-xs text-slate-300">Lock in for 90 days. No compromises.</p>
+            </div>
+          </div>
+          <div class="text-right">
+            <span id="arcDayBadge" class="text-xs font-mono font-bold px-3 py-1 rounded-full bg-sky-500/20 text-sky-200 border border-sky-400/30">
+              Day 1 / 90
+            </span>
+          </div>
+        </div>
+
+        <div class="space-y-1">
+          <div class="w-full bg-slate-800/80 h-2.5 rounded-full overflow-hidden border border-slate-700">
+            <div id="arcProgressBar" class="h-full bg-gradient-to-r from-sky-400 to-emerald-400 rounded-full transition-all duration-500" style="width: 1%;"></div>
+          </div>
+          <div class="flex justify-between text-[11px] text-slate-400 font-mono">
+            <span id="arcStartDateDisplay">Started: Today</span>
+            <span id="arcPercentDisplay">1.1% Complete</span>
+            <span>Target: 90 Days</span>
+          </div>
+        </div>
+      </div>
+
       <!-- Date Navigator -->
       <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
         <button onclick="changeActiveDay(-1)" class="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition">
@@ -195,7 +200,7 @@
         <div class="text-center">
           <div class="flex items-center justify-center gap-2">
             <h2 id="currentViewingDate" class="text-base font-bold text-slate-900">Today</h2>
-            <span id="todayBadge" class="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">Live</span>
+            <span id="todayBadge" class="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-sky-100 text-sky-800 border border-sky-200">Live</span>
           </div>
           <p id="viewingSubDate" class="text-xs text-slate-500 mt-0.5">Fetching date...</p>
         </div>
@@ -209,183 +214,72 @@
         </div>
       </div>
 
-      <!-- Daily Score Dashboard & Apple Fitness Style Ring -->
+      <!-- Daily Score Dashboard & Circular Ring -->
       <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm grid grid-cols-1 sm:grid-cols-12 gap-5 items-center">
         <div class="sm:col-span-4 flex flex-col items-center justify-center">
           <div class="relative w-36 h-36 flex items-center justify-center">
             <svg class="w-full h-full" viewBox="0 0 100 100">
               <circle cx="50" cy="50" r="42" stroke="#E2E8F0" stroke-width="9" fill="transparent"/>
-              <circle id="scoreRingProgress" class="ring-circle" cx="50" cy="50" r="42" stroke="#10B981" stroke-width="9" stroke-linecap="round" fill="transparent" stroke-dasharray="263.89" stroke-dashoffset="263.89"/>
+              <circle id="scoreRingProgress" class="ring-circle" cx="50" cy="50" r="42" stroke="#0284C7" stroke-width="9" stroke-linecap="round" fill="transparent" stroke-dasharray="263.89" stroke-dashoffset="263.89"/>
             </svg>
             <div class="absolute inset-0 flex flex-col items-center justify-center text-center">
               <span id="scoreText" class="text-3xl font-black tracking-tight text-slate-900">0</span>
-              <span class="text-[10px] uppercase tracking-widest text-slate-400 font-bold">/ 100 PTS</span>
+              <span class="text-[10px] uppercase tracking-widest text-slate-400 font-bold">/ 15 DONE</span>
             </div>
           </div>
         </div>
 
-        <div class="sm:col-span-8 space-y-3.5">
+        <div class="sm:col-span-8 space-y-3">
           <div class="flex items-center justify-between border-b border-slate-100 pb-2.5">
             <div>
-              <p class="text-xs text-slate-500 font-medium">Daily Target Completion</p>
-              <h3 id="scoreStatusMessage" class="text-sm font-bold text-slate-800">Start ticking off habits</h3>
+              <p class="text-xs text-slate-500 font-medium">Daily Arc Discipline</p>
+              <h3 id="scoreStatusMessage" class="text-sm font-bold text-slate-800">Complete all 15 checkpoints</h3>
             </div>
             <div class="text-right">
               <div class="flex items-center gap-1.5 justify-end text-amber-600 font-bold text-sm">
                 <i data-lucide="flame" class="w-4 h-4 fill-amber-500 text-amber-500"></i>
                 <span id="streakCount">0</span> Day Streak
               </div>
-              <p class="text-[10px] text-slate-400">Score ≥ 80 pts</p>
+              <p class="text-[10px] text-slate-400">≥ 12 items = Streak Hit</p>
             </div>
           </div>
 
-          <div class="grid grid-cols-3 gap-2 pt-1 text-center">
+          <div class="grid grid-cols-2 gap-2 text-center text-xs">
             <div class="p-2.5 rounded-xl bg-slate-50 border border-slate-100">
-              <p class="text-[10px] text-slate-500 font-semibold uppercase">Nutrition</p>
-              <p id="nutritionScore" class="text-xs font-bold text-emerald-600 mt-0.5">0/50 pts</p>
+              <span class="text-[10px] text-slate-400 uppercase font-semibold">Completion</span>
+              <p id="percentageScore" class="font-bold text-sky-600 text-sm mt-0.5">0%</p>
             </div>
             <div class="p-2.5 rounded-xl bg-slate-50 border border-slate-100">
-              <p class="text-[10px] text-slate-500 font-semibold uppercase">Activity</p>
-              <p id="activityScore" class="text-xs font-bold text-sky-600 mt-0.5">0/30 pts</p>
-            </div>
-            <div class="p-2.5 rounded-xl bg-slate-50 border border-slate-100">
-              <p class="text-[10px] text-slate-500 font-semibold uppercase">Recovery</p>
-              <p id="recoveryScore" class="text-xs font-bold text-rose-600 mt-0.5">0/20 pts</p>
+              <span class="text-[10px] text-slate-400 uppercase font-semibold">Remaining</span>
+              <p id="remainingCount" class="font-bold text-slate-700 text-sm mt-0.5">15 Checkpoints</p>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- Habit Checklists -->
-      <div class="space-y-4">
-        <!-- Nutrition Category (50 pts) -->
-        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 space-y-3">
-          <div class="flex items-center justify-between border-b border-slate-100 pb-2">
-            <div class="flex items-center gap-2 text-emerald-700 font-bold text-sm">
-              <i data-lucide="apple" class="w-4 h-4"></i>
-              <span>Nutrition Disciplines (50 pts)</span>
-            </div>
-            <span class="text-[11px] font-mono text-slate-400">10 pts each</span>
+      <!-- Winter Arc 15 Checkpoints List -->
+      <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 space-y-3">
+        <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+          <div class="flex items-center gap-2 text-slate-900 font-bold text-sm">
+            <span>❄️</span>
+            <span>Daily 15 Arc Directives</span>
           </div>
-
-          <div class="space-y-2">
-            <label class="flex items-start gap-3 p-3 rounded-xl bg-slate-50 border border-slate-200 hover:bg-slate-100/70 cursor-pointer transition">
-              <input type="checkbox" onchange="toggleChecklist('nutr_protein')" id="chk-nutr_protein" class="mt-1 w-4 h-4 rounded text-emerald-600 focus:ring-0 focus:ring-offset-0 border-slate-300" />
-              <div class="text-xs leading-relaxed">
-                <span class="font-bold text-slate-900 block">Hit 90g – 100g Protein</span>
-                <span class="text-slate-500 text-[11px]">Anchored with eggs, 50g soya chunks, curd, or thick dal.</span>
-              </div>
-            </label>
-
-            <label class="flex items-start gap-3 p-3 rounded-xl bg-slate-50 border border-slate-200 hover:bg-slate-100/70 cursor-pointer transition">
-              <input type="checkbox" onchange="toggleChecklist('nutr_oil')" id="chk-nutr_oil" class="mt-1 w-4 h-4 rounded text-emerald-600 focus:ring-0 focus:ring-offset-0 border-slate-300" />
-              <div class="text-xs leading-relaxed">
-                <span class="font-bold text-slate-900 block">Cooking Oil Capped at 2–3 Tsp</span>
-                <span class="text-slate-500 text-[11px]">Strict 10–15 ml oil/ghee limit across all meals today.</span>
-              </div>
-            </label>
-
-            <label class="flex items-start gap-3 p-3 rounded-xl bg-slate-50 border border-slate-200 hover:bg-slate-100/70 cursor-pointer transition">
-              <input type="checkbox" onchange="toggleChecklist('nutr_carbs')" id="chk-nutr_carbs" class="mt-1 w-4 h-4 rounded text-emerald-600 focus:ring-0 focus:ring-offset-0 border-slate-300" />
-              <div class="text-xs leading-relaxed">
-                <span class="font-bold text-slate-900 block">Carb Portion Controlled</span>
-                <span class="text-slate-500 text-[11px]">Max 1 medium cup cooked rice or 2 rotis per main meal.</span>
-              </div>
-            </label>
-
-            <label class="flex items-start gap-3 p-3 rounded-xl bg-slate-50 border border-slate-200 hover:bg-slate-100/70 cursor-pointer transition">
-              <input type="checkbox" onchange="toggleChecklist('nutr_sugar')" id="chk-nutr_sugar" class="mt-1 w-4 h-4 rounded text-emerald-600 focus:ring-0 focus:ring-offset-0 border-slate-300" />
-              <div class="text-xs leading-relaxed">
-                <span class="font-bold text-slate-900 block">Zero Liquid Sugar</span>
-                <span class="text-slate-500 text-[11px]">No sugary chai, packaged juices, or soda. Water or buttermilk only.</span>
-              </div>
-            </label>
-
-            <label class="flex items-start gap-3 p-3 rounded-xl bg-slate-50 border border-slate-200 hover:bg-slate-100/70 cursor-pointer transition">
-              <input type="checkbox" onchange="toggleChecklist('nutr_water')" id="chk-nutr_water" class="mt-1 w-4 h-4 rounded text-emerald-600 focus:ring-0 focus:ring-offset-0 border-slate-300" />
-              <div class="text-xs leading-relaxed">
-                <span class="font-bold text-slate-900 block">Hydration (2.5L – 3L Water)</span>
-                <span class="text-slate-500 text-[11px]">Steady hydration throughout the day.</span>
-              </div>
-            </label>
-          </div>
+          <span class="text-[11px] font-mono text-slate-400">Check off as you complete</span>
         </div>
 
-        <!-- Activity Category (30 pts) -->
-        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 space-y-3">
-          <div class="flex items-center justify-between border-b border-slate-100 pb-2">
-            <div class="flex items-center gap-2 text-sky-700 font-bold text-sm">
-              <i data-lucide="activity" class="w-4 h-4"></i>
-              <span>Movement & Exercise (30 pts)</span>
-            </div>
-            <span class="text-[11px] font-mono text-slate-400">10 pts each</span>
-          </div>
-
-          <div class="space-y-2">
-            <label class="flex items-start gap-3 p-3 rounded-xl bg-slate-50 border border-slate-200 hover:bg-slate-100/70 cursor-pointer transition">
-              <input type="checkbox" onchange="toggleChecklist('act_steps')" id="chk-act_steps" class="mt-1 w-4 h-4 rounded text-sky-600 focus:ring-0 focus:ring-offset-0 border-slate-300" />
-              <div class="text-xs leading-relaxed">
-                <span class="font-bold text-slate-900 block">8,000 – 10,000 Daily Steps</span>
-                <span class="text-slate-500 text-[11px]">Brisk morning/evening walking logged.</span>
-              </div>
-            </label>
-
-            <label class="flex items-start gap-3 p-3 rounded-xl bg-slate-50 border border-slate-200 hover:bg-slate-100/70 cursor-pointer transition">
-              <input type="checkbox" onchange="toggleChecklist('act_postwalk')" id="chk-act_postwalk" class="mt-1 w-4 h-4 rounded text-sky-600 focus:ring-0 focus:ring-offset-0 border-slate-300" />
-              <div class="text-xs leading-relaxed">
-                <span class="font-bold text-slate-900 block">10-Min Post-Meal Walk</span>
-                <span class="text-slate-500 text-[11px]">Light stroll after lunch/dinner to blunt insulin spikes.</span>
-              </div>
-            </label>
-
-            <label class="flex items-start gap-3 p-3 rounded-xl bg-slate-50 border border-slate-200 hover:bg-slate-100/70 cursor-pointer transition">
-              <input type="checkbox" onchange="toggleChecklist('act_strength')" id="chk-act_strength" class="mt-1 w-4 h-4 rounded text-sky-600 focus:ring-0 focus:ring-offset-0 border-slate-300" />
-              <div class="text-xs leading-relaxed">
-                <span class="font-bold text-slate-900 block">Strength / Calisthenics Routine</span>
-                <span class="text-slate-500 text-[11px]">20–30 mins bodyweight squats, push-ups, or core routine.</span>
-              </div>
-            </label>
-          </div>
-        </div>
-
-        <!-- Recovery Category (20 pts) -->
-        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 space-y-3">
-          <div class="flex items-center justify-between border-b border-slate-100 pb-2">
-            <div class="flex items-center gap-2 text-rose-700 font-bold text-sm">
-              <i data-lucide="moon" class="w-4 h-4"></i>
-              <span>Recovery & Routine (20 pts)</span>
-            </div>
-            <span class="text-[11px] font-mono text-slate-400">10 pts each</span>
-          </div>
-
-          <div class="space-y-2">
-            <label class="flex items-start gap-3 p-3 rounded-xl bg-slate-50 border border-slate-200 hover:bg-slate-100/70 cursor-pointer transition">
-              <input type="checkbox" onchange="toggleChecklist('rec_sleep')" id="chk-rec_sleep" class="mt-1 w-4 h-4 rounded text-rose-600 focus:ring-0 focus:ring-offset-0 border-slate-300" />
-              <div class="text-xs leading-relaxed">
-                <span class="font-bold text-slate-900 block">7–8 Hours Quality Sleep</span>
-                <span class="text-slate-500 text-[11px]">Deep recovery to protect metabolism and lean tissue.</span>
-              </div>
-            </label>
-
-            <label class="flex items-start gap-3 p-3 rounded-xl bg-slate-50 border border-slate-200 hover:bg-slate-100/70 cursor-pointer transition">
-              <input type="checkbox" onchange="toggleChecklist('rec_dinner')" id="chk-rec_dinner" class="mt-1 w-4 h-4 rounded text-rose-600 focus:ring-0 focus:ring-offset-0 border-slate-300" />
-              <div class="text-xs leading-relaxed">
-                <span class="font-bold text-slate-900 block">Early Dinner Cutoff</span>
-                <span class="text-slate-500 text-[11px]">Finished food at least 2 hours before bed.</span>
-              </div>
-            </label>
-          </div>
+        <div id="checkpointsListContainer" class="space-y-2">
+          <!-- Injected dynamically -->
         </div>
       </div>
     </section>
 
-    <!-- TAB 2: WEEKLY WEIGH-IN (NO WAIST, EDITABLE) -->
+    <!-- TAB 2: WEEKLY WEIGH-IN (NO WAIST, FULLY EDITABLE) -->
     <section id="view-weighin" class="tab-view hidden space-y-6">
 
       <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
         <div class="flex items-center justify-between">
           <div>
-            <span class="text-[10px] uppercase font-bold tracking-wider text-slate-400">Goal Target</span>
+            <span class="text-[10px] uppercase font-bold tracking-wider text-slate-400">Bodyweight Goal</span>
             <h2 class="text-lg font-bold text-slate-900">76.0 kg → 65.0 kg</h2>
           </div>
           <div class="text-right">
@@ -437,13 +331,13 @@
 
           <div>
             <label class="block text-xs font-semibold text-slate-700 mb-1.5">Note (Optional)</label>
-            <input type="text" id="inputWeighNote" placeholder="e.g. End of Week 1, feeling good" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2 text-xs text-slate-900 focus:outline-none focus:border-emerald-600" />
+            <input type="text" id="inputWeighNote" placeholder="e.g. Week 2 complete, feeling disciplined" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2 text-xs text-slate-900 focus:outline-none focus:border-emerald-600" />
           </div>
 
           <div class="flex gap-2">
             <button type="submit" id="weighInSubmitBtn" class="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition flex items-center justify-center gap-1.5 shadow-sm">
               <i data-lucide="plus-circle" class="w-4 h-4"></i>
-              <span id="weighInSubmitText">Save Weekly Record</span>
+              <span id="weighInSubmitText">Save Record</span>
             </button>
             <button type="button" id="weighInCancelEditBtn" onclick="cancelWeighInEdit()" class="hidden px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs transition">
               Cancel
@@ -455,7 +349,7 @@
       <!-- Trend Chart -->
       <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3">
         <div class="flex items-center justify-between">
-          <h3 class="text-xs font-bold text-slate-700 uppercase tracking-wider">Weight Loss Trend</h3>
+          <h3 class="text-xs font-bold text-slate-700 uppercase tracking-wider">Weight Loss Curve</h3>
           <span class="text-[11px] text-slate-500 font-mono">Target: 65.0 kg</span>
         </div>
         <div class="h-56 w-full">
@@ -463,7 +357,7 @@
         </div>
       </div>
 
-      <!-- Weigh-in History Table -->
+      <!-- History Table -->
       <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 space-y-3">
         <div class="flex items-center justify-between border-b border-slate-100 pb-2">
           <h3 class="text-xs font-bold text-slate-900 uppercase tracking-wider">Logged Entries</h3>
@@ -499,7 +393,7 @@
             </div>
             <div>
               <h2 class="text-base font-bold text-slate-900">Habit & Slip-Up Tracker</h2>
-              <p class="text-xs text-slate-500">Track impulses and frequency to build self-awareness.</p>
+              <p class="text-xs text-slate-500">Track triggers and retain self-control.</p>
             </div>
           </div>
           <span class="text-xs font-bold px-2.5 py-1 rounded-full bg-rose-50 text-rose-700 border border-rose-200" id="totalBadHabitsTodayBadge">
@@ -549,11 +443,11 @@
         </div>
       </div>
 
-      <!-- Habit Cards Container -->
+      <!-- Bad Habit Cards Container -->
       <div id="badHabitsListContainer" class="space-y-3">
       </div>
 
-      <!-- Slip-Up Timestamped Logs -->
+      <!-- Logs -->
       <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 space-y-3">
         <div class="flex items-center justify-between border-b border-slate-100 pb-2">
           <h3 class="text-xs font-bold text-slate-900 uppercase tracking-wider">Recent Slip-Up Log</h3>
@@ -561,71 +455,6 @@
         </div>
 
         <div id="habitEventLogsContainer" class="space-y-2 max-h-60 overflow-y-auto custom-scrollbar">
-        </div>
-      </div>
-    </section>
-
-    <!-- TAB 4: BUDGET PROTEIN GUIDE -->
-    <section id="view-nutrition" class="tab-view hidden space-y-6">
-      <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
-        <div class="flex items-center justify-between border-b border-slate-100 pb-3">
-          <div>
-            <h2 class="text-base font-bold text-slate-900">100g Budget Protein Breakdown</h2>
-            <p class="text-xs text-slate-500">High-efficiency sources under ₹80–₹100/day</p>
-          </div>
-          <span class="text-xs font-bold px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
-            Target: 100g
-          </span>
-        </div>
-
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-          <div class="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
-            <div class="flex justify-between font-bold text-slate-900">
-              <span>Soya Chunks (Raw 50g)</span>
-              <span class="text-emerald-700 font-mono">~26g Protein</span>
-            </div>
-            <p class="text-slate-500 text-[11px]">Cost: ~₹6–₹8. Squeeze water twice after boiling to remove raw taste.</p>
-          </div>
-
-          <div class="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
-            <div class="flex justify-between font-bold text-slate-900">
-              <span>3 Whole Eggs</span>
-              <span class="text-emerald-700 font-mono">~19g Protein</span>
-            </div>
-            <p class="text-slate-500 text-[11px]">Cost: ~₹20–₹22. Complete amino acids, healthy fats, and choline.</p>
-          </div>
-
-          <div class="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
-            <div class="flex justify-between font-bold text-slate-900">
-              <span>1 Cup Thick Dal (Cooked)</span>
-              <span class="text-emerald-700 font-mono">~9g Protein</span>
-            </div>
-            <p class="text-slate-500 text-[11px]">Cost: ~₹10–₹12. Moong or masoor dal with limited oil tadka.</p>
-          </div>
-
-          <div class="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
-            <div class="flex justify-between font-bold text-slate-900">
-              <span>Curd / Dahi (150g)</span>
-              <span class="text-emerald-700 font-mono">~6g Protein</span>
-            </div>
-            <p class="text-slate-500 text-[11px]">Cost: ~₹12. Probiotic support for metabolic digestion.</p>
-          </div>
-
-          <div class="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
-            <div class="flex justify-between font-bold text-slate-900">
-              <span>Roasted Chana (35g)</span>
-              <span class="text-emerald-700 font-mono">~8g Protein</span>
-            </div>
-            <p class="text-slate-500 text-[11px]">Cost: ~₹7–₹8. High fiber, crunchy hunger-killing snack.</p>
-          </div>
-
-          <div class="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
-            <div class="flex justify-between font-bold text-slate-900">
-              <span>Toned Milk (250 ml)</span>
-              <span class="text-emerald-700 font-mono">~8g Protein</span>
-            </div>
-            <p class="text-slate-500 text-[11px]">Cost: ~₹14–₹16. Light bedtime recovery beverage.</p>
-          </div>
         </div>
       </div>
     </section>
@@ -645,7 +474,7 @@
       <div class="space-y-3">
         <div>
           <label class="block text-xs font-semibold text-slate-700 mb-1">Habit Name *</label>
-          <input type="text" id="newHabitNameInput" placeholder="e.g. Late night chips, Missed walk" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-rose-600" />
+          <input type="text" id="newHabitNameInput" placeholder="e.g. Afternoon binge, Late sleep" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-rose-600" />
         </div>
         <div>
           <label class="block text-xs font-semibold text-slate-700 mb-1">Category</label>
@@ -672,8 +501,27 @@
     <span id="toastMessage">Synchronized</span>
   </div>
 
-  <!-- APP LOGIC -->
+  <!-- APP JAVASCRIPT -->
   <script>
+    // 15 WINTER ARC CHECKPOINTS
+    const WINTER_ARC_CHECKPOINTS = [
+      { id: 'arc_1', num: 1, emoji: '🚫', title: 'no porn', desc: 'Maintain mental clarity and absolute discipline.' },
+      { id: 'arc_2', num: 2, emoji: '💧', title: '3L water daily', desc: 'Hydrate constantly throughout the day.' },
+      { id: 'arc_3', num: 3, emoji: '😴', title: '8 hours of sleep', desc: 'Rest fully for muscular recovery and hormone balance.' },
+      { id: 'arc_4', num: 4, emoji: '🥗', title: 'eat protein-rich food', desc: 'Hit ~100g protein (soya, eggs, dal, chana).' },
+      { id: 'arc_5', num: 5, emoji: '📖', title: 'read 10 pages daily', desc: 'Sharpen your intellect and mindset daily.' },
+      { id: 'arc_6', num: 6, emoji: '🚿', title: 'cold shower', desc: 'Build grit, dopamine regulation, and alertness.' },
+      { id: 'arc_7', num: 7, emoji: '🏃', title: '10,000 steps daily', desc: 'Continuous calorie expenditure and brisk walking.' },
+      { id: 'arc_8', num: 8, emoji: '🍭', title: 'no added sugar', desc: 'Zero sugary chai, sodas, sweets, or junk snacks.' },
+      { id: 'arc_9', num: 9, emoji: '🚫', title: 'no alcohol', desc: 'Zero empty calories, protect liver and metabolic rate.' },
+      { id: 'arc_10', num: 10, emoji: '📵', title: 'minimize unnecessary distractions', desc: 'Cut mindless scrolling and non-essential screen time.' },
+      { id: 'arc_11', num: 11, emoji: '⏰', title: 'wake up around 6 am', desc: 'Own your morning with purposeful routine.' },
+      { id: 'arc_12', num: 12, emoji: '🌙', title: 'aim to sleep around 10 pm', desc: 'Consistent bedtime window for deep REM sleep.' },
+      { id: 'arc_13', num: 13, emoji: '🧠', title: 'focus on yourself and your goals', desc: 'Zero comparison, pure self-mastery.' },
+      { id: 'arc_14', num: 14, emoji: '💪', title: 'no unnecessary excuses', desc: 'Take extreme ownership of every action.' },
+      { id: 'arc_15', num: 15, emoji: '🔥', title: '90 days of consistency', desc: 'Show up every single day without failing.' }
+    ];
+
     const DEFAULT_HABITS = [
       { id: 'bh_sugar', name: 'Sugary Drink / Sweets', category: 'Diet', icon: 'candy' },
       { id: 'bh_snack', name: 'Late Night Snacking', category: 'Diet', icon: 'cookie' },
@@ -685,6 +533,7 @@
     let state = {
       activeTab: 'daily',
       activeDateKey: getTodayKey(),
+      winterArcStart: getTodayKey(),
       checklistData: {},
       weighIns: [
         { id: 'init-baseline', date: '2026-09-15', weight: 76.0, note: 'Starting Baseline' }
@@ -696,38 +545,45 @@
     let activeHabitFilter = 'All';
     let habitSearchQuery = '';
 
-    // Load from LocalStorage Cache
+    function getTodayKey() {
+      const now = new Date();
+      return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    }
+
     function loadPersistedState() {
       try {
-        const storedChecklist = localStorage.getItem('fitTrack_checklist');
+        const storedChecklist = localStorage.getItem('winterArc_checklist');
         if (storedChecklist) state.checklistData = JSON.parse(storedChecklist);
 
-        const storedWeighIns = localStorage.getItem('fitTrack_weighins');
+        const storedWeighIns = localStorage.getItem('winterArc_weighins');
         if (storedWeighIns) state.weighIns = JSON.parse(storedWeighIns);
 
-        const storedBadHabits = localStorage.getItem('fitTrack_badhabits');
+        const storedBadHabits = localStorage.getItem('winterArc_badhabits');
         if (storedBadHabits) state.badHabits = JSON.parse(storedBadHabits);
 
-        const storedBadHabitLogs = localStorage.getItem('fitTrack_badhabit_logs');
+        const storedBadHabitLogs = localStorage.getItem('winterArc_badhabit_logs');
         if (storedBadHabitLogs) state.badHabitLogs = JSON.parse(storedBadHabitLogs);
+
+        const storedStart = localStorage.getItem('winterArc_start');
+        if (storedStart) state.winterArcStart = storedStart;
       } catch (e) {
         console.error('Local load error:', e);
       }
     }
 
     function saveChecklist() {
-      localStorage.setItem('fitTrack_checklist', JSON.stringify(state.checklistData));
+      localStorage.setItem('winterArc_checklist', JSON.stringify(state.checklistData));
       if (window.syncToCloud) window.syncToCloud();
     }
 
     function saveWeighIns() {
-      localStorage.setItem('fitTrack_weighins', JSON.stringify(state.weighIns));
+      localStorage.setItem('winterArc_weighins', JSON.stringify(state.weighIns));
       if (window.syncToCloud) window.syncToCloud();
     }
 
     function saveBadHabits() {
-      localStorage.setItem('fitTrack_badhabits', JSON.stringify(state.badHabits));
-      localStorage.setItem('fitTrack_badhabit_logs', JSON.stringify(state.badHabitLogs));
+      localStorage.setItem('winterArc_badhabits', JSON.stringify(state.badHabits));
+      localStorage.setItem('winterArc_badhabit_logs', JSON.stringify(state.badHabitLogs));
       if (window.syncToCloud) window.syncToCloud();
     }
 
@@ -759,22 +615,34 @@
         state.activeDateKey = todayKey;
         renderDailyChecklist();
         renderBadHabitsView();
+        updateArcProgressBanner();
         showToast('Midnight rollover: New day loaded');
       }
       lastCheckedDateString = todayKey;
     }
 
-    function getTodayKey() {
-      const now = new Date();
-      return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    // 90-Day Arc Progress Calculation
+    function updateArcProgressBanner() {
+      const start = new Date(state.winterArcStart + 'T00:00:00');
+      const now = new Date(getTodayKey() + 'T00:00:00');
+      const diffTime = now - start;
+      const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24)) + 1;
+      
+      const dayNum = Math.min(Math.max(diffDays, 1), 90);
+      const percent = ((dayNum / 90) * 100).toFixed(1);
+
+      document.getElementById('arcDayBadge').textContent = `Day ${dayNum} / 90`;
+      document.getElementById('arcProgressBar').style.width = `${percent}%`;
+      document.getElementById('arcPercentDisplay').textContent = `${percent}% Complete`;
+      document.getElementById('arcStartDateDisplay').textContent = `Started: ${start.toLocaleDateString('en-IN', { month: 'short', day: 'numeric' })}`;
     }
 
-    // Tabs
+    // Navigation Tabs
     function switchTab(tabId) {
       state.activeTab = tabId;
       document.querySelectorAll('.tab-view').forEach(v => v.classList.add('hidden'));
       document.querySelectorAll('.tab-btn').forEach(b => {
-        b.classList.remove('bg-emerald-600', 'text-white', 'shadow-sm');
+        b.classList.remove('bg-sky-600', 'text-white', 'shadow-sm');
         b.classList.add('text-slate-600');
       });
 
@@ -783,7 +651,7 @@
 
       if (activeView) activeView.classList.remove('hidden');
       if (activeBtn) {
-        activeBtn.classList.add('bg-emerald-600', 'text-white', 'shadow-sm');
+        activeBtn.classList.add('bg-sky-600', 'text-white', 'shadow-sm');
         activeBtn.classList.remove('text-slate-600');
       }
 
@@ -795,18 +663,34 @@
       }
     }
 
-    // Checklist
-    const HABIT_KEYS = [
-      'nutr_protein', 'nutr_oil', 'nutr_carbs', 'nutr_sugar', 'nutr_water',
-      'act_steps', 'act_postwalk', 'act_strength',
-      'rec_sleep', 'rec_dinner'
-    ];
+    // Checklist Operations
+    function renderCheckpointsHTML() {
+      const container = document.getElementById('checkpointsListContainer');
+      container.innerHTML = '';
 
-    function toggleChecklist(k) {
+      WINTER_ARC_CHECKPOINTS.forEach(item => {
+        const div = document.createElement('label');
+        div.className = 'flex items-start gap-3 p-3 rounded-xl bg-slate-50 border border-slate-200 hover:bg-slate-100/70 cursor-pointer transition select-none';
+        div.innerHTML = `
+          <input type="checkbox" onchange="toggleArcChecklist('${item.id}')" id="chk-${item.id}" class="mt-1 w-4 h-4 rounded text-sky-600 focus:ring-0 focus:ring-offset-0 border-slate-300" />
+          <div class="text-xs leading-relaxed flex-1">
+            <div class="flex items-center gap-1.5 font-bold text-slate-900">
+              <span class="text-slate-400 font-mono">${item.num}.</span>
+              <span class="text-base">${item.emoji}</span>
+              <span class="capitalize text-sm font-semibold">${item.title}</span>
+            </div>
+            <span class="text-slate-500 text-[11px] block mt-0.5">${item.desc}</span>
+          </div>
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    function toggleArcChecklist(id) {
       if (!state.checklistData[state.activeDateKey]) state.checklistData[state.activeDateKey] = {};
-      const chk = document.getElementById(`chk-${k}`);
+      const chk = document.getElementById(`chk-${id}`);
       if (chk) {
-        state.checklistData[state.activeDateKey][k] = chk.checked;
+        state.checklistData[state.activeDateKey][id] = chk.checked;
         saveChecklist();
         updateDailyScoreDisplay();
       }
@@ -823,12 +707,13 @@
       if (isToday) badge.classList.remove('hidden'); else badge.classList.add('hidden');
 
       const dayData = state.checklistData[state.activeDateKey] || {};
-      HABIT_KEYS.forEach(k => {
-        const input = document.getElementById(`chk-${k}`);
-        if (input) input.checked = !!dayData[k];
+      WINTER_ARC_CHECKPOINTS.forEach(item => {
+        const input = document.getElementById(`chk-${item.id}`);
+        if (input) input.checked = !!dayData[item.id];
       });
 
       updateDailyScoreDisplay();
+      updateArcProgressBanner();
     }
 
     function changeActiveDay(delta) {
@@ -845,26 +730,29 @@
 
     function updateDailyScoreDisplay() {
       const d = state.checklistData[state.activeDateKey] || {};
-      let total = 0, nutr = 0, act = 0, rec = 0;
+      let completedCount = 0;
 
-      ['nutr_protein', 'nutr_oil', 'nutr_carbs', 'nutr_sugar', 'nutr_water'].forEach(k => { if (d[k]) { total += 10; nutr += 10; } });
-      ['act_steps', 'act_postwalk', 'act_strength'].forEach(k => { if (d[k]) { total += 10; act += 10; } });
-      ['rec_sleep', 'rec_dinner'].forEach(k => { if (d[k]) { total += 10; rec += 10; } });
+      WINTER_ARC_CHECKPOINTS.forEach(item => {
+        if (d[item.id]) completedCount++;
+      });
 
-      document.getElementById('scoreText').textContent = total;
-      document.getElementById('nutritionScore').textContent = `${nutr}/50 pts`;
-      document.getElementById('activityScore').textContent = `${act}/30 pts`;
-      document.getElementById('recoveryScore').textContent = `${rec}/20 pts`;
+      const totalItems = WINTER_ARC_CHECKPOINTS.length; // 15
+      const remaining = totalItems - completedCount;
+      const pct = Math.round((completedCount / totalItems) * 100);
+
+      document.getElementById('scoreText').textContent = completedCount;
+      document.getElementById('percentageScore').textContent = `${pct}%`;
+      document.getElementById('remainingCount').textContent = `${remaining} Remaining`;
 
       const ring = document.getElementById('scoreRingProgress');
       const circ = 263.89;
-      ring.style.strokeDashoffset = circ - (total / 100) * circ;
+      ring.style.strokeDashoffset = circ - (completedCount / totalItems) * circ;
 
       const msg = document.getElementById('scoreStatusMessage');
-      if (total === 100) msg.textContent = '🔥 Target Complete!';
-      else if (total >= 80) msg.textContent = '💪 Solid fat-loss consistency!';
-      else if (total >= 50) msg.textContent = '⚡ Good momentum, keep going!';
-      else msg.textContent = 'Start checking off habits';
+      if (completedCount === 15) msg.textContent = '❄️ Flawless Day! Winter Arc Locked In!';
+      else if (completedCount >= 12) msg.textContent = '🔥 High discipline. Finish the rest!';
+      else if (completedCount >= 7) msg.textContent = '⚡ Halfway there. Keep pushing!';
+      else msg.textContent = 'Execute each checkpoint without fail.';
 
       updateStreakCount();
     }
@@ -872,12 +760,12 @@
     function updateStreakCount() {
       let streak = 0;
       let check = new Date();
-      for (let i = 0; i < 60; i++) {
+      for (let i = 0; i < 90; i++) {
         const key = `${check.getFullYear()}-${String(check.getMonth() + 1).padStart(2, '0')}-${String(check.getDate()).padStart(2, '0')}`;
         const d = state.checklistData[key] || {};
-        let sc = 0;
-        HABIT_KEYS.forEach(k => { if (d[k]) sc += 10; });
-        if (sc >= 80) streak++;
+        let done = 0;
+        WINTER_ARC_CHECKPOINTS.forEach(item => { if (d[item.id]) done++; });
+        if (done >= 12) streak++;
         else if (i !== 0) break;
         check.setDate(check.getDate() - 1);
       }
@@ -912,7 +800,7 @@
           weight: weightVal,
           note: noteVal
         });
-        showToast('Weigh-in saved');
+        showToast('Weigh-in recorded');
       }
 
       state.weighIns.sort((a, b) => new Date(a.date) - new Date(b.date));
@@ -946,12 +834,12 @@
       document.getElementById('inputWeighDate').value = getTodayKey();
       document.getElementById('inputWeighNote').value = '';
       document.getElementById('weighInFormTitle').textContent = 'Record Weekly Weigh-In';
-      document.getElementById('weighInSubmitText').textContent = 'Save Weekly Record';
+      document.getElementById('weighInSubmitText').textContent = 'Save Record';
       document.getElementById('weighInCancelEditBtn').classList.add('hidden');
     }
 
     function deleteWeighInRecord(id) {
-      if (confirm('Delete this record?')) {
+      if (confirm('Delete this weigh-in record?')) {
         state.weighIns = state.weighIns.filter(x => x.id !== id);
         saveWeighIns();
         renderWeighInTable();
@@ -1029,12 +917,12 @@
             {
               label: 'Actual (kg)',
               data: dataWeights,
-              borderColor: '#10B981',
-              backgroundColor: 'rgba(16, 185, 129, 0.08)',
+              borderColor: '#0284C7',
+              backgroundColor: 'rgba(2, 132, 199, 0.08)',
               borderWidth: 2.5,
               fill: true,
               tension: 0.3,
-              pointBackgroundColor: '#10B981',
+              pointBackgroundColor: '#0284C7',
               pointRadius: 4
             },
             {
@@ -1187,7 +1075,7 @@
       const container = document.getElementById('habitEventLogsContainer');
       container.innerHTML = '';
       if (state.badHabitLogs.length === 0) {
-        container.innerHTML = `<p class="text-xs text-slate-400 text-center py-4">No slip-ups recorded. Excellent discipline!</p>`;
+        container.innerHTML = `<p class="text-xs text-slate-400 text-center py-4">Zero slip-ups. Full discipline maintained!</p>`;
         return;
       }
       state.badHabitLogs.slice(0, 15).forEach(item => {
@@ -1260,7 +1148,7 @@
       return (t || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
     }
 
-    // Toast & Refresh
+    // Toast & Sync Notifications
     let toastTimeout;
     function showToast(msg) {
       const toast = document.getElementById('toastNotification');
@@ -1281,9 +1169,9 @@
       const text = document.getElementById('beaconText');
       if (b && text) {
         text.textContent = label || 'Sync Active';
-        b.classList.add('bg-emerald-100', 'border-emerald-300');
+        b.classList.add('bg-sky-100', 'border-sky-300');
         setTimeout(() => {
-          b.classList.remove('bg-emerald-100', 'border-emerald-300');
+          b.classList.remove('bg-sky-100', 'border-sky-300');
           text.textContent = 'Live Sync';
         }, 1500);
       }
@@ -1294,16 +1182,19 @@
       renderWeighInTable();
       updateWeightTrendChart();
       renderBadHabitsView();
+      updateArcProgressBanner();
     }
 
     // App Initialization
     document.addEventListener('DOMContentLoaded', () => {
       loadPersistedState();
       initRealtimeClock();
+      renderCheckpointsHTML();
       document.getElementById('inputWeighDate').value = getTodayKey();
       renderDailyChecklist();
       renderWeighInTable();
       renderBadHabitsView();
+      updateArcProgressBanner();
       lucide.createIcons();
     });
   </script>
